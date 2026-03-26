@@ -3,6 +3,7 @@ import PetDisplay, { type BubbleItem } from './components/PetDisplay'
 import ChatInput from './components/ChatInput'
 import SettingsPanel from './components/SettingsPanel'
 import { supabase, isOnline, generateFriendCode } from './lib/supabase'
+import { loadAppConfig, type AppConfig } from './lib/config'
 import {
   subscribeMessages,
   sendMessage,
@@ -15,13 +16,13 @@ import { useWindowManager } from './hooks/useWindowManager'
 import './App.css'
 
 const STORAGE_KEY = 'desktop-pet-user'
+const OPACITY_KEY = 'desktop-pet-opacity'
 
 let bubbleIdCounter = 0
 
 // 旧格式迁移
 function migrateIfNeeded(raw: Record<string, unknown>): UserProfile {
   if ('pet_image_data' in raw) {
-    // 旧格式 → 新格式
     const savedFriend = localStorage.getItem('desktop-pet-friend')
     const friend = savedFriend ? JSON.parse(savedFriend) as FriendInfo : undefined
 
@@ -48,7 +49,6 @@ function migrateIfNeeded(raw: Record<string, unknown>): UserProfile {
     return profile
   }
 
-  // 中间版本迁移：全局 friend → 第一只宠物的 friend
   const p = raw as unknown as UserProfile
   const savedFriend = localStorage.getItem('desktop-pet-friend')
   if (savedFriend && p.pets?.length > 0 && !p.pets[0].friend) {
@@ -76,6 +76,7 @@ function loadImageToCanvas(dataUrl: string): Promise<HTMLCanvasElement> {
 
 export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [appConfig, setAppConfig] = useState<AppConfig | undefined>()
 
   // 宠物状态
   const [petState, setPetState] = useState<AnimationState>('idle')
@@ -88,7 +89,7 @@ export default function App() {
   const [myBubble, setMyBubble] = useState<BubbleItem | null>(null)
   const [friendBubble, setFriendBubble] = useState<BubbleItem | null>(null)
 
-  // 未读消息
+  // 未读消息（仅好友消息）
   const [unreadMessages, setUnreadMessages] = useState<PetMessage[]>([])
 
   // 宠物画布
@@ -97,10 +98,26 @@ export default function App() {
 
   // 设置面板
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsInitialTab, setSettingsInitialTab] = useState<'pets' | 'create' | 'friend' | 'chat'>('pets')
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'pets' | 'chat' | 'settings'>('pets')
+
+  // 透明度
+  const [petOpacity, setPetOpacity] = useState(() => {
+    const saved = localStorage.getItem(OPACITY_KEY)
+    return saved ? Number(saved) : 100
+  })
 
   const { switchToFloat, switchToPanel, initPanel, startDragging } = useWindowManager()
   const listeningRef = useRef(false)
+
+  // 加载远程配置
+  useEffect(() => {
+    loadAppConfig().then(setAppConfig)
+  }, [])
+
+  // 透明度持久化
+  useEffect(() => {
+    localStorage.setItem(OPACITY_KEY, String(petOpacity))
+  }, [petOpacity])
 
   // 状态优先级
   useEffect(() => {
@@ -147,18 +164,23 @@ export default function App() {
             friendTimerRef.current = null
           }, 3000)
         }
+        // 只有好友消息计入未读（不包含自己的消息）
         setUnreadMessages(prev => [...prev, msg])
-        saveProfile(p => ({
-          ...p,
-          chat_history: [...p.chat_history, {
-            id: msg.id,
-            from_user: msg.from_user,
-            to_user: msg.to_user,
-            content: msg.content,
-            pet_state: msg.pet_state,
-            timestamp: Date.now(),
-          }].slice(-200),
-        }))
+        // 添加到历史记录（去重：避免重复记录）
+        saveProfile(p => {
+          if (p.chat_history.some(m => m.id === msg.id)) return p
+          return {
+            ...p,
+            chat_history: [...p.chat_history, {
+              id: msg.id,
+              from_user: msg.from_user,
+              to_user: msg.to_user,
+              content: msg.content,
+              pet_state: msg.pet_state,
+              timestamp: Date.now(),
+            }].slice(-200),
+          }
+        })
       },
       (update) => {
         if (update.set_by !== uid) {
@@ -191,18 +213,26 @@ export default function App() {
     loadActivePet(p)
     startListening(p.id)
 
-    // 首次无宠物 → 打开设置面板
+    // 同步到 Supabase
+    if (isOnline) {
+      supabase!.from('users').upsert({
+        id: p.id,
+        friend_code: p.friend_code,
+        nickname: p.nickname || null,
+      })
+    }
+
     if (p.pets.length === 0) {
       setSettingsOpen(true)
-      setSettingsInitialTab('create')
+      setSettingsInitialTab('pets')
       initPanel()
     } else {
       switchToFloat()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 打开设置面板（叠加在宠物上方，宠物位置不变）
-  const openSettings = useCallback(async (tab: 'pets' | 'create' | 'friend' | 'chat' = 'pets') => {
+  // 打开设置面板
+  const openSettings = useCallback(async (tab: 'pets' | 'chat' | 'settings' = 'pets') => {
     setSettingsInitialTab(tab)
     setSettingsOpen(true)
     await switchToPanel()
@@ -215,28 +245,43 @@ export default function App() {
     await switchToFloat()
   }, [switchToFloat, profile])
 
-  // 菜单圆点点击
-  const handleMenuDotClick = useCallback(async () => {
+  // 红点单击：展示最近2条未读消息
+  const handleDotClick = useCallback(async () => {
     if (unreadMessages.length > 0) {
-      const msg = unreadMessages[0]
-      setFriendBubble({ id: `friend-${++bubbleIdCounter}`, text: msg.content, type: 'friend' })
-      if (msg.pet_state && msg.pet_state !== 'idle') {
+      // 显示最近的消息（最多2条）
+      const msgs = unreadMessages.slice(0, 2)
+      const text = msgs.map(m => m.content).join('\n')
+      setFriendBubble({ id: `friend-${++bubbleIdCounter}`, text, type: 'friend' })
+
+      // 处理动画状态
+      const lastMsg = msgs[msgs.length - 1]
+      if (lastMsg.pet_state && lastMsg.pet_state !== 'idle') {
         if (friendTimerRef.current) clearTimeout(friendTimerRef.current)
-        setFriendSetState(msg.pet_state as AnimationState)
+        setFriendSetState(lastMsg.pet_state as AnimationState)
         friendTimerRef.current = setTimeout(() => {
           setFriendSetState(null)
           friendTimerRef.current = null
         }, 3000)
       }
-      if (isOnline) {
-        await markReadAndDelete(msg.id)
+
+      // 标记已读
+      for (const msg of msgs) {
+        if (isOnline) {
+          await markReadAndDelete(msg.id)
+        }
       }
-      setUnreadMessages(prev => prev.slice(1))
+      setUnreadMessages(prev => prev.slice(msgs.length))
+    } else {
+      await openSettings('pets')
     }
-    await openSettings('pets')
   }, [unreadMessages, openSettings])
 
-  // 发消息（目标 = 当前宠物绑定的好友）
+  // 红点双击：打开历史对话
+  const handleDotDoubleClick = useCallback(async () => {
+    await openSettings('chat')
+  }, [openSettings])
+
+  // 发消息
   const handleSend = useCallback(async (text: string, state: AnimationState) => {
     if (!profile) return
     const activePet = profile.pets[profile.active_pet_index]
@@ -253,18 +298,32 @@ export default function App() {
     if (isOnline) {
       await sendMessage(profile.id, targetId, text, state)
     }
-    saveProfile(p => ({
-      ...p,
-      chat_history: [...p.chat_history, {
-        id: crypto.randomUUID(),
-        from_user: p.id,
-        to_user: targetId,
-        content: text,
-        pet_state: state,
-        timestamp: Date.now(),
-      }].slice(-200),
-    }))
+    // 自己发送的消息添加到历史（不触发红点）
+    saveProfile(p => {
+      const msgId = crypto.randomUUID()
+      return {
+        ...p,
+        chat_history: [...p.chat_history, {
+          id: msgId,
+          from_user: p.id,
+          to_user: targetId,
+          content: text,
+          pet_state: state,
+          timestamp: Date.now(),
+        }].slice(-200),
+      }
+    })
   }, [profile, saveProfile])
+
+  // 状态预览：选择动画状态时宠物展示3秒
+  const handleStatePreview = useCallback((state: AnimationState) => {
+    if (myTimerRef.current) clearTimeout(myTimerRef.current)
+    setMySetState(state)
+    myTimerRef.current = setTimeout(() => {
+      setMySetState(null)
+      myTimerRef.current = null
+    }, 3000)
+  }, [])
 
   // 选择宠物
   const handleSelectPet = useCallback(async (index: number) => {
@@ -323,7 +382,30 @@ export default function App() {
     }
   }, [profile, saveProfile])
 
-  // 绑定好友到指定宠物
+  // 修改宠物（编辑后更新）
+  const handlePetUpdated = useCallback(async (index: number, pet: PetData) => {
+    saveProfile(p => {
+      const pets = [...p.pets]
+      pets[index] = { ...pet, friend: pets[index]?.friend }
+      return { ...p, pets }
+    })
+    if (profile && index === profile.active_pet_index) {
+      const canvas = await loadImageToCanvas(pet.image_data)
+      setPetCanvas(canvas)
+      bonesRef.current = pet.bones
+    }
+  }, [profile, saveProfile])
+
+  // 改名
+  const handleRenamePet = useCallback((index: number, name: string) => {
+    saveProfile(p => {
+      const pets = [...p.pets]
+      pets[index] = { ...pets[index], name }
+      return { ...p, pets }
+    })
+  }, [saveProfile])
+
+  // 绑定好友
   const handleBindFriend = useCallback((petIndex: number, friend: FriendInfo) => {
     saveProfile(p => {
       const pets = [...p.pets]
@@ -342,15 +424,28 @@ export default function App() {
     })
   }, [saveProfile])
 
+  // 切换宠物（从输入框的切换按钮）
+  const handleSwitchPet = useCallback(async (index: number) => {
+    saveProfile(p => ({ ...p, active_pet_index: index }))
+    if (profile) {
+      const pet = profile.pets[index]
+      if (pet) {
+        const canvas = await loadImageToCanvas(pet.image_data)
+        setPetCanvas(canvas)
+        bonesRef.current = pet.bones
+      }
+    }
+  }, [profile, saveProfile])
+
   // 拖拽
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.chat-input-area, .state-picker, .settings-panel, button, input, a')) return
+    if ((e.target as HTMLElement).closest('.chat-input-area, .state-picker, .pet-switcher-panel, .settings-panel, button, input, a')) return
     startDragging()
   }, [startDragging])
 
   if (!profile) return null
 
-  // 设置面板打开时：全屏覆盖
+  // 设置面板打开时：显示面板（宠物通过面板内小预览展示）
   if (settingsOpen) {
     return (
       <div className="app-root panel-mode">
@@ -359,10 +454,15 @@ export default function App() {
           onSelectPet={handleSelectPet}
           onDeletePet={handleDeletePet}
           onPetCreated={handlePetCreated}
+          onPetUpdated={handlePetUpdated}
           onBindFriend={handleBindFriend}
           onUnbindFriend={handleUnbindFriend}
+          onRenamePet={handleRenamePet}
           onClose={closeSettings}
           initialTab={settingsInitialTab}
+          petOpacity={petOpacity}
+          onOpacityChange={setPetOpacity}
+          appConfig={appConfig}
         />
       </div>
     )
@@ -378,9 +478,17 @@ export default function App() {
         myBubble={myBubble}
         friendBubble={friendBubble}
         unreadCount={unreadMessages.length}
-        onMenuDotClick={handleMenuDotClick}
+        onDotClick={handleDotClick}
+        onDotDoubleClick={handleDotDoubleClick}
+        opacity={petOpacity}
       />
-      <ChatInput onSend={handleSend} />
+      <ChatInput
+        onSend={handleSend}
+        onStatePreview={handleStatePreview}
+        pets={profile.pets}
+        activePetIndex={profile.active_pet_index}
+        onSwitchPet={handleSwitchPet}
+      />
     </div>
   )
 }

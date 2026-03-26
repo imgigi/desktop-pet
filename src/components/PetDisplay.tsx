@@ -16,13 +16,16 @@ interface Props {
   myBubble: BubbleItem | null
   friendBubble: BubbleItem | null
   unreadCount: number
-  onMenuDotClick: () => void
+  onDotClick: () => void
+  onDotDoubleClick: () => void
+  opacity?: number  // 0-100，默认100
 }
 
 export default function PetDisplay({
   imageCanvas, bones, state,
   myBubble, friendBubble,
-  unreadCount, onMenuDotClick,
+  unreadCount, onDotClick, onDotDoubleClick,
+  opacity = 100,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animRef = useRef<number>(0)
@@ -101,6 +104,24 @@ export default function PetDisplay({
   }, [render])
 
   const hasUnread = unreadCount > 0
+  const isFaint = state === 'faint'
+
+  // 双击检测
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleDotClick = () => {
+    if (clickTimerRef.current) {
+      // 双击
+      clearTimeout(clickTimerRef.current)
+      clickTimerRef.current = null
+      onDotDoubleClick()
+    } else {
+      // 延迟判断单击
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null
+        onDotClick()
+      }, 250)
+    }
+  }
 
   return (
     <div className="pet-display">
@@ -118,9 +139,13 @@ export default function PetDisplay({
         )}
       </div>
 
-      {/* 宠物形象 + 统一菜单圆点 */}
+      {/* 宠物形象 */}
       <div className="pet-avatar-wrap">
-        <canvas ref={canvasRef} className="pet-canvas" />
+        <canvas
+          ref={canvasRef}
+          className={`pet-canvas ${isFaint ? 'faint-rotate' : ''}`}
+          style={{ opacity: opacity / 100 }}
+        />
 
         {!imageCanvas && (
           <div className="pet-placeholder">
@@ -128,12 +153,12 @@ export default function PetDisplay({
           </div>
         )}
 
-        {/* 统一菜单圆点 - 右上角（有宠物图片时才显示） */}
+        {/* 红点/菜单 */}
         {imageCanvas && (
           <div
             className={`menu-dot ${hasUnread ? 'menu-dot-unread' : ''}`}
-            onClick={onMenuDotClick}
-            title="设置"
+            onClick={handleDotClick}
+            title={hasUnread ? '点击查看消息，双击查看全部' : '打开面板'}
           >
             {hasUnread && unreadCount > 0 && (
               <span className="menu-dot-count">{unreadCount}</span>

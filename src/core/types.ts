@@ -37,7 +37,7 @@ export interface AnimationClip {
   tracks: AnimationTrack[]
 }
 
-export type AnimationState = 'idle' | 'sleep' | 'active' | 'dance' | 'wave' | 'bounce'
+export type AnimationState = 'idle' | 'dance' | 'wave' | 'bounce' | 'faint'
 
 export interface PetData {
   id: string

@@ -11,7 +11,7 @@ export default function ChatHistory({ messages, userId }: Props) {
   if (sorted.length === 0) {
     return (
       <div className="chat-history">
-        <div className="chat-history-empty">还没有对话记录</div>
+        <div className="chat-history-empty">还没有聊天记录，快去跟宠物说点什么吧~</div>
       </div>
     )
   }

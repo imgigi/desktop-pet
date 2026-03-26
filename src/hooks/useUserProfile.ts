@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { UserProfile, PetData, ChatMessage, Bone } from '../core/types'
-import { generateFriendCode } from '../lib/supabase'
+import { generateFriendCode, supabase, isOnline } from '../lib/supabase'
 import { getDefaultBones } from '../core/skeleton'
 
 const STORAGE_KEY = 'desktop-pet-user'
@@ -66,6 +66,14 @@ export function useUserProfile() {
   useEffect(() => {
     const p = loadProfile() || createNewProfile()
     setProfile(p)
+    // 同步 friend_code 到 Supabase，确保其他用户能通过配对码找到自己
+    if (isOnline) {
+      supabase!.from('users').upsert({
+        id: p.id,
+        friend_code: p.friend_code,
+        nickname: p.nickname || null,
+      })
+    }
   }, [])
 
   const saveProfile = useCallback((updater: (prev: UserProfile) => UserProfile) => {

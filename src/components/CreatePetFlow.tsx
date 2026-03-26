@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import SkeletonEditor from './SkeletonEditor'
 import AnimationPreview from './AnimationPreview'
 import type { Bone, PetData } from '../core/types'
+import type { AppConfig } from '../lib/config'
 
 const RATIOS = [
   { label: '4:3', w: 4, h: 3 },
@@ -12,48 +13,45 @@ const RATIOS = [
 interface Props {
   onPetCreated: (pet: PetData) => void
   existingCount: number
+  editingPet?: PetData
+  appConfig?: AppConfig
+  onCancel?: () => void
 }
 
-export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
+export default function CreatePetFlow({ onPetCreated, existingCount, editingPet, appConfig, onCancel }: Props) {
   const [step, setStep] = useState<'upload' | 'skeleton' | 'preview'>('upload')
   const [imageCanvas, setImageCanvas] = useState<HTMLCanvasElement | null>(null)
-  const [bones, setBones] = useState<Bone[] | null>(null)
-  const [name, setName] = useState(`宠物${existingCount + 1}`)
+  const [bones, setBones] = useState<Bone[] | null>(editingPet?.bones || null)
+  const [name, setName] = useState(editingPet?.name || `宠物${existingCount + 1}`)
   const [ratioIdx, setRatioIdx] = useState(0)
   const [rawImage, setRawImage] = useState<HTMLImageElement | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
 
-  // 图片变换状态：缩放、偏移
+  // 图片变换状态
   const [imgScale, setImgScale] = useState(1)
   const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 })
   const draggingRef = useRef(false)
   const lastPosRef = useRef({ x: 0, y: 0 })
-  const frameRef = useRef<HTMLDivElement>(null)
 
   const ratio = RATIOS[ratioIdx]
-
-  // 画框像素尺寸（内部画布用 256 基准）
   const maxSize = 256
   const frameW = ratio.w >= ratio.h ? maxSize : Math.round(maxSize * ratio.w / ratio.h)
   const frameH = ratio.w >= ratio.h ? Math.round(maxSize * ratio.h / ratio.w) : maxSize
-
-  // 显示尺寸
   const displayW = 180
   const displayH = Math.round(displayW * ratio.h / ratio.w)
 
-  // 根据当前变换状态生成最终 canvas
+  const cutoutUrl = appConfig?.cutout_url || 'https://www.remove.bg/zh'
+
   const generateCanvas = useCallback((img: HTMLImageElement, scale: number, offset: { x: number, y: number }, fw: number, fh: number) => {
-    // 基础 contain 缩放
     const baseScale = Math.min(fw / img.naturalWidth, fh / img.naturalHeight)
     const totalScale = baseScale * scale
     const drawW = img.naturalWidth * totalScale
     const drawH = img.naturalHeight * totalScale
-
     const canvas = document.createElement('canvas')
     canvas.width = fw
     canvas.height = fh
     const ctx = canvas.getContext('2d')!
-    // 居中 + 用户偏移（偏移量映射到画布坐标）
     const displayToCanvas = fw / displayW
     const cx = (fw - drawW) / 2 + offset.x * displayToCanvas
     const cy = (fh - drawH) / 2 + offset.y * displayToCanvas
@@ -61,13 +59,23 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
     return canvas
   }, [displayW])
 
-  // 重新生成预览
   const updatePreview = useCallback((img: HTMLImageElement, scale: number, offset: { x: number, y: number }, fw: number, fh: number) => {
     const canvas = generateCanvas(img, scale, offset, fw, fh)
     setImageCanvas(canvas)
   }, [generateCanvas])
 
-  // 切换比例时重置变换
+  // 编辑模式：加载已有图片
+  useEffect(() => {
+    if (editingPet && !rawImage) {
+      const img = new Image()
+      img.onload = () => {
+        setRawImage(img)
+        updatePreview(img, 1, { x: 0, y: 0 }, frameW, frameH)
+      }
+      img.src = editingPet.image_data
+    }
+  }, [editingPet]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (rawImage && step === 'upload') {
       setImgScale(1)
@@ -78,14 +86,12 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
     }
   }, [ratioIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // scale/offset 变化时更新（仅在上传步骤）
   useEffect(() => {
     if (rawImage && step === 'upload') {
       updatePreview(rawImage, imgScale, imgOffset, frameW, frameH)
     }
   }, [imgScale, imgOffset]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 步骤守卫：骨骼/预览步骤需要 imageCanvas，丢失则回退
   useEffect(() => {
     if ((step === 'skeleton' || step === 'preview') && !imageCanvas) {
       setStep('upload')
@@ -93,7 +99,6 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
   }, [step, imageCanvas])
 
   const loadFile = (file: File) => {
-    // 转为 data URL 避免 blob URL 被回收
     const reader = new FileReader()
     reader.onload = () => {
       const img = new Image()
@@ -113,16 +118,43 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
     if (file) loadFile(file)
   }
 
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items
-    if (!items) return
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault()
-        const file = item.getAsFile()
-        if (file) loadFile(file)
-        return
+  // 全局粘贴监听（修复粘贴无效的问题）
+  useEffect(() => {
+    if (step !== 'upload') return
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault()
+          const file = item.getAsFile()
+          if (file) loadFile(file)
+          return
+        }
       }
+    }
+    window.addEventListener('paste', handleGlobalPaste)
+    return () => window.removeEventListener('paste', handleGlobalPaste)
+  }, [step, frameW, frameH]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 拖拽上传
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file && file.type.startsWith('image/')) {
+      loadFile(file)
     }
   }
 
@@ -152,7 +184,6 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
     }
   }, [])
 
-  // 滚轮缩放
   const handleWheel = (e: React.WheelEvent) => {
     if (!rawImage) return
     e.preventDefault()
@@ -171,11 +202,12 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
   const handleConfirm = () => {
     if (!imageCanvas || !bones) return
     const pet: PetData = {
-      id: crypto.randomUUID(),
+      id: editingPet?.id || crypto.randomUUID(),
       name: name.trim() || `宠物${existingCount + 1}`,
       image_data: imageCanvas.toDataURL('image/png'),
       bones,
-      created_at: Date.now(),
+      created_at: editingPet?.created_at || Date.now(),
+      friend: editingPet?.friend,
     }
     onPetCreated(pet)
   }
@@ -189,7 +221,6 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
     }
   }
 
-  // 预览画布 CSS 变换（用于实时显示，不用每次重绘 canvas）
   const previewTransform = rawImage ? (() => {
     const baseScale = Math.min(displayW / rawImage.naturalWidth, displayH / rawImage.naturalHeight)
     const drawW = rawImage.naturalWidth * baseScale * imgScale
@@ -200,7 +231,7 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
   })() : null
 
   return (
-    <div className="create-pet-flow" onPaste={handlePaste}>
+    <div className="create-pet-flow">
       {/* 步骤指示器 */}
       <div className="setup-steps-indicator">
         <span className={`setup-step-badge ${step === 'upload' ? 'active' : imageCanvas ? 'done' : ''}`}>
@@ -218,30 +249,19 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
 
       {step === 'upload' && (
         <div className="setup-step">
-          <div className="setup-title">创建你的形象</div>
-          <div className="setup-desc">上传一张图片作为你在朋友屏幕上的宠物形象</div>
-
-          {/* 抠图推荐 */}
-          <div className="cutout-buttons">
-            <span className="cutout-label">💡 建议先抠图去背景</span>
-            <div className="cutout-btn-row">
-              <button className="cutout-btn" onClick={() => openUrl('https://www.remove.bg/zh')}>
-                remove.bg
-              </button>
-              <button className="cutout-btn" onClick={() => openUrl('https://pixian.ai/')}>
-                pixian.ai
-              </button>
-            </div>
+          <div className="setup-title">{editingPet ? '修改宠物形象' : '打造你的专属桌宠'}</div>
+          <div className="setup-desc">
+            {editingPet ? '重新调整图片，让TA更可爱' : '选一张朋友的照片，把TA变成你桌面上的小伙伴'}
           </div>
 
           <div className="create-pet-name-row">
-            <label>名字：</label>
+            <label>昵称：</label>
             <input
               className="create-pet-name-input"
               value={name}
               onChange={e => setName(e.target.value)}
               maxLength={10}
-              placeholder="给宠物起个名字"
+              placeholder="给TA起个好玩的名字"
             />
           </div>
 
@@ -259,14 +279,16 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
             ))}
           </div>
 
-          {/* 上传 + 编辑区域 */}
+          {/* 上传 + 编辑区域（支持拖拽） */}
           <div
-            ref={frameRef}
-            className={`avatar-upload-frame ${rawImage ? 'has-image' : ''}`}
+            className={`avatar-upload-frame ${rawImage ? 'has-image' : ''} ${isDragOver ? 'drag-over' : ''}`}
             style={{ width: displayW, height: displayH }}
             onClick={() => { if (!rawImage) fileRef.current?.click() }}
             onMouseDown={rawImage ? handleMouseDown : undefined}
             onWheel={rawImage ? handleWheel : undefined}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
           >
             <input
               ref={fileRef}
@@ -292,24 +314,35 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
             ) : (
               <div className="avatar-placeholder">
                 <span>🖼</span>
-                <span>点击上传 / Ctrl+V 粘贴</span>
+                <span>{isDragOver ? '松手放下图片~' : '点击上传 / 粘贴 / 拖拽图片到这里'}</span>
               </div>
             )}
           </div>
 
           {rawImage && (
-            <div className="avatar-edit-hint">滚轮缩放 · 拖拽移动 · 点击画框重新上传</div>
+            <div className="avatar-edit-hint">滚轮缩放 · 拖拽移动 · 怎么好看怎么调</div>
           )}
+
+          {/* 抠图按钮 */}
+          <button className="cutout-fixed-btn" onClick={() => openUrl(cutoutUrl)}>
+            ✂️ 点击去抠图，让你的宠物更好看
+          </button>
 
           {rawImage && (
             <div className="avatar-edit-actions">
               <button className="setup-btn avatar-reupload-btn" onClick={() => fileRef.current?.click()}>
-                重新上传
+                换一张
               </button>
-              <button className="setup-btn" onClick={() => setStep('skeleton')}>
-                下一步：调整骨骼 →
+              <button className="setup-btn primary" onClick={() => setStep('skeleton')}>
+                下一步：调骨骼 →
               </button>
             </div>
+          )}
+
+          {onCancel && (
+            <button className="back-link" onClick={onCancel}>
+              ← 取消
+            </button>
           )}
         </div>
       )}
@@ -325,17 +358,17 @@ export default function CreatePetFlow({ onPetCreated, existingCount }: Props) {
 
       {step === 'preview' && imageCanvas && bones && (
         <div className="setup-step">
-          <div className="setup-title">预览动画效果</div>
-          <div className="setup-desc">确认你的宠物看起来正确</div>
+          <div className="setup-title">看看效果</div>
+          <div className="setup-desc">试试各种动作，满意就保存吧</div>
 
           <AnimationPreview imageCanvas={imageCanvas} bones={bones} />
 
           <button className="setup-btn primary" onClick={handleConfirm}>
-            保存到宠物栏
+            {editingPet ? '保存修改' : '完成，加入宠物栏！'}
           </button>
 
           <button className="back-link" onClick={() => setStep('skeleton')}>
-            ← 返回修改骨骼
+            ← 返回调整骨骼
           </button>
         </div>
       )}

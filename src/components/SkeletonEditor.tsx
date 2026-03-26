@@ -34,6 +34,7 @@ export default function SkeletonEditor({ imageCanvas, initialBones, onConfirm, o
     ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
     ctx.fillRect(0, 0, imgW, imgH)
 
+    // 影响范围圆圈 - 提高透明度使其更明显
     for (const bone of bones) {
       if (!bone.enabled) continue
       const bx = cx + bone.offset.x
@@ -41,15 +42,16 @@ export default function SkeletonEditor({ imageCanvas, initialBones, onConfirm, o
 
       ctx.beginPath()
       ctx.arc(bx, by, bone.influence, 0, Math.PI * 2)
-      ctx.fillStyle = dragging === bone.id ? 'rgba(244, 167, 185, 0.15)' : 'rgba(201, 184, 232, 0.12)'
+      ctx.fillStyle = dragging === bone.id ? 'rgba(244, 167, 185, 0.25)' : 'rgba(201, 184, 232, 0.22)'
       ctx.fill()
-      ctx.strokeStyle = dragging === bone.id ? 'rgba(244, 167, 185, 0.5)' : 'rgba(201, 184, 232, 0.3)'
-      ctx.lineWidth = 1
+      ctx.strokeStyle = dragging === bone.id ? 'rgba(244, 167, 185, 0.6)' : 'rgba(201, 184, 232, 0.45)'
+      ctx.lineWidth = 1.5
       ctx.setLineDash([4, 4])
       ctx.stroke()
       ctx.setLineDash([])
     }
 
+    // 骨骼点
     for (const bone of bones) {
       if (!bone.enabled) continue
       const bx = cx + bone.offset.x
@@ -57,7 +59,7 @@ export default function SkeletonEditor({ imageCanvas, initialBones, onConfirm, o
       const isActive = dragging === bone.id
 
       ctx.beginPath()
-      ctx.arc(bx, by, isActive ? 12 : 8, 0, Math.PI * 2)
+      ctx.arc(bx, by, isActive ? 14 : 10, 0, Math.PI * 2)
       ctx.fillStyle = isActive ? '#F4A7B9' : '#C9B8E8'
       ctx.fill()
       ctx.strokeStyle = '#fff'
@@ -75,7 +77,7 @@ export default function SkeletonEditor({ imageCanvas, initialBones, onConfirm, o
       const labelW = ctx.measureText(label).width + 12
       const labelH = 20
       const labelX = bx - labelW / 2
-      const labelY = by - 30
+      const labelY = by - 32
 
       const r = 4
       ctx.beginPath()
@@ -165,7 +167,7 @@ export default function SkeletonEditor({ imageCanvas, initialBones, onConfirm, o
   return (
     <div className="setup-step skeleton-step">
       <div className="setup-title">调整骨骼</div>
-      <div className="setup-desc">拖拽圆点到宠物对应的身体部位</div>
+      <div className="setup-desc">拖拽圆点到宠物对应位置，让TA动起来更自然</div>
 
       <div className="skeleton-editor-layout">
         <div className="skeleton-canvas-wrap">
@@ -216,7 +218,7 @@ export default function SkeletonEditor({ imageCanvas, initialBones, onConfirm, o
           ← 返回修改形象
         </button>
         <button className="setup-btn primary" onClick={() => onConfirm(bones)}>
-          确认骨骼，下一步 →
+          下一步：预览效果 →
         </button>
       </div>
     </div>

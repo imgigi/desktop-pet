@@ -44,7 +44,7 @@ body {
   padding-bottom: 4px;
 }
 
-/* ---- Bubbles Area (above pet) ---- */
+/* ---- Bubbles Area ---- */
 .bubbles-area {
   display: flex;
   flex-direction: column;
@@ -72,11 +72,12 @@ body {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+  white-space: pre-line;
 }
 
 .bubble-friend {
   align-self: flex-start;
-  background: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.85);
   color: #3a3545;
   border-radius: 14px 14px 14px 4px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
@@ -84,7 +85,7 @@ body {
 
 .bubble-mine {
   align-self: flex-end;
-  background: linear-gradient(135deg, rgba(244, 167, 185, 0.7), rgba(201, 184, 232, 0.7));
+  background: linear-gradient(135deg, rgba(244, 167, 185, 0.85), rgba(201, 184, 232, 0.85));
   color: #fff;
   border-radius: 14px 14px 4px 14px;
   box-shadow: 0 1px 6px rgba(201, 184, 232, 0.2);
@@ -106,10 +107,15 @@ body {
   height: 160px;
   cursor: grab;
   image-rendering: auto;
+  transition: transform 1.5s ease-in-out;
 }
 
 .pet-canvas:active {
   cursor: grabbing;
+}
+
+.pet-canvas.faint-rotate {
+  transform: rotate(90deg);
 }
 
 .pet-placeholder {
@@ -122,7 +128,7 @@ body {
   opacity: 0.5;
 }
 
-/* ---- Unified Menu Dot ---- */
+/* ---- Menu Dot ---- */
 .menu-dot {
   position: absolute;
   top: 4px;
@@ -164,12 +170,6 @@ body {
 @keyframes dot-pulse {
   0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(244, 167, 185, 0.5); }
   50% { transform: scale(1.15); box-shadow: 0 0 0 4px rgba(244, 167, 185, 0); }
-}
-
-@keyframes dot-pop {
-  0% { transform: scale(0); }
-  60% { transform: scale(1.3); }
-  100% { transform: scale(1); }
 }
 
 /* ---- Chat Input ---- */
@@ -234,7 +234,28 @@ body {
   font-size: 11px;
 }
 
-/* State Picker Dropdown */
+/* Pet Switch Button */
+.pet-switch-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 2px;
+  transition: background 0.15s;
+}
+
+.pet-switch-btn:hover {
+  background: rgba(201, 184, 232, 0.2);
+}
+
+/* State Picker */
 .state-picker {
   display: flex;
   gap: 3px;
@@ -264,6 +285,53 @@ body {
 .state-option.active {
   background: rgba(201, 184, 232, 0.25);
   color: #5a4e6e;
+}
+
+/* Pet Switcher Panel */
+.pet-switcher-panel {
+  display: flex;
+  gap: 6px;
+  padding: 6px 4px;
+  flex-wrap: wrap;
+}
+
+.pet-switcher-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1.5px solid #e0ddd6;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  color: #5a4e6e;
+  transition: all 0.15s;
+  backdrop-filter: blur(8px);
+}
+
+.pet-switcher-item:hover {
+  border-color: #C9B8E8;
+}
+
+.pet-switcher-item.active {
+  border-color: #F4A7B9;
+  background: rgba(244, 167, 185, 0.1);
+}
+
+.pet-switcher-img {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.pet-switcher-name {
+  max-width: 50px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ============ Settings Panel ============ */
@@ -346,6 +414,53 @@ body {
   min-height: 0;
 }
 
+/* ============ Settings Page ============ */
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px;
+}
+
+.settings-section {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-section-title {
+  font-size: 13px;
+  color: #5a4e6e;
+  font-weight: 500;
+}
+
+.settings-opacity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-slider {
+  flex: 1;
+  height: 4px;
+  accent-color: #C9B8E8;
+}
+
+.settings-opacity-val {
+  font-size: 13px;
+  color: #5a4e6e;
+  min-width: 36px;
+  text-align: right;
+}
+
+.settings-hint {
+  font-size: 11px;
+  color: #a099ab;
+}
+
 /* ============ Pet Gallery ============ */
 .pet-gallery {
   display: flex;
@@ -353,225 +468,315 @@ body {
   gap: 12px;
 }
 
-.pet-gallery-title {
-  font-size: 14px;
-  color: #5a4e6e;
-  text-align: center;
-}
-
-.pet-gallery-grid {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.pet-slot {
-  width: 100px;
-  height: 120px;
-  border-radius: 12px;
-  border: 2px solid #e0ddd6;
-  background: rgba(255, 255, 255, 0.6);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-
-.pet-slot:hover {
-  border-color: #C9B8E8;
-  background: rgba(255, 255, 255, 0.8);
-}
-
-.pet-slot-active {
-  border-color: #F4A7B9;
-  background: rgba(244, 167, 185, 0.08);
-  box-shadow: 0 0 0 2px rgba(244, 167, 185, 0.2);
-}
-
-.pet-slot-empty {
-  border-style: dashed;
-}
-
-.pet-slot-add {
-  font-size: 32px;
-  color: #c0b8c8;
-  line-height: 1;
-}
-
-.pet-slot-img {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-  margin-bottom: 4px;
-}
-
-.pet-slot-name {
-  font-size: 11px;
-  color: #5a4e6e;
-  text-align: center;
-  max-width: 90px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pet-slot-friend {
-  font-size: 9px;
-  color: #a099ab;
-  text-align: center;
-  max-width: 90px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pet-slot-delete {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 18px;
-  height: 18px;
-  border: none;
-  border-radius: 9px;
-  background: rgba(255, 59, 48, 0.8);
-  color: #fff;
-  font-size: 12px;
-  cursor: pointer;
+/* Onboarding Tips */
+.onboarding-tip {
   display: flex;
   align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.pet-slot:hover .pet-slot-delete {
-  opacity: 1;
-}
-
-/* ---- Gallery Friend Section ---- */
-.gallery-friend-section {
-  margin-top: 8px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 10px;
-}
-
-.gallery-friend-header {
-  margin-bottom: 8px;
-}
-
-.gallery-friend-label {
-  font-size: 12px;
-  color: #5a4e6e;
-  font-weight: 500;
-}
-
-.gallery-friend-bound {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(244, 167, 185, 0.15), rgba(201, 184, 232, 0.15));
+  border-radius: 10px;
+  border: 1.5px solid rgba(201, 184, 232, 0.3);
 }
 
-.gallery-friend-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #3a3545;
+.onboarding-text {
+  flex: 1;
+  font-size: 12px;
+  color: #5a4e6e;
+  line-height: 1.5;
 }
 
-.gallery-friend-icon {
-  font-size: 14px;
-}
-
-.gallery-friend-name {
-  font-weight: 500;
-}
-
-.gallery-unbind-btn {
-  padding: 4px 12px;
-  border: 1.5px solid #e0ddd6;
-  border-radius: 6px;
-  background: #fff;
+.onboarding-dismiss {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(160, 153, 171, 0.15);
   color: #a099ab;
   font-size: 11px;
-  font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.gallery-unbind-btn:hover {
-  border-color: #FF3B30;
-  color: #FF3B30;
-}
-
-.gallery-unbind-confirm {
+/* My Code Section */
+.my-code-section {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  flex-wrap: wrap;
 }
 
-.gallery-unbind-text {
+.my-code-label {
+  font-size: 12px;
+  color: #a099ab;
+}
+
+.my-code-value {
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 3px;
+  color: #5a4e6e;
+  font-weight: bold;
+  user-select: all;
+  background: rgba(201, 184, 232, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.my-code-hint {
+  font-size: 10px;
+  color: #c0b8c8;
+  width: 100%;
+}
+
+/* ============ Pet Cards ============ */
+.pet-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pet-card {
+  border: 2px solid #e0ddd6;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pet-card:hover {
+  border-color: #C9B8E8;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.pet-card-active {
+  border-color: #F4A7B9 !important;
+  background: rgba(244, 167, 185, 0.06) !important;
+  box-shadow: 0 0 0 2px rgba(244, 167, 185, 0.15);
+}
+
+.pet-card-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.pet-card-avatar {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  border-radius: 10px;
+  background:
+    repeating-conic-gradient(rgba(201,184,232,0.08) 0% 25%, transparent 0% 50%)
+    50% / 10px 10px;
+  flex-shrink: 0;
+}
+
+.pet-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pet-card-name {
+  font-size: 14px;
+  color: #5a4e6e;
+  font-weight: 500;
+  cursor: text;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.pet-card-name:hover {
+  background: rgba(201, 184, 232, 0.12);
+}
+
+.pet-card-name-edit {
+  display: flex;
+}
+
+.pet-card-name-input {
+  flex: 1;
+  height: 26px;
+  border: 1.5px solid #C9B8E8;
+  border-radius: 6px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  color: #3a3545;
+  background: #fff;
+}
+
+.pet-card-friend {
   font-size: 11px;
-  color: #FF3B30;
-  white-space: nowrap;
+  color: #5a4e6e;
 }
 
-.gallery-unbind-yes {
+.pet-card-no-friend {
+  font-size: 11px;
+  color: #c0b8c8;
+}
+
+.pet-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.pet-card-action-btn {
+  padding: 3px 10px;
+  border: 1.5px solid #e0ddd6;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11px;
+  font-family: inherit;
+  color: #a099ab;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pet-card-action-btn:hover {
+  border-color: #C9B8E8;
+  color: #5a4e6e;
+}
+
+.pet-card-delete-btn:hover {
+  border-color: #FF3B30 !important;
+  color: #FF3B30 !important;
+}
+
+.pet-card-delete-confirm {
+  display: flex;
+  gap: 4px;
+}
+
+.pet-card-delete-yes {
   padding: 3px 10px;
   border: none;
   border-radius: 6px;
   background: #FF3B30;
+  font-size: 11px;
+  font-family: inherit;
   color: #fff;
-  font-size: 11px;
-  font-family: inherit;
   cursor: pointer;
 }
 
-.gallery-unbind-no {
-  padding: 3px 10px;
-  border: 1.5px solid #e0ddd6;
-  border-radius: 6px;
-  background: #fff;
-  color: #a099ab;
-  font-size: 11px;
-  font-family: inherit;
-  cursor: pointer;
+/* Card Bind Section */
+.pet-card-bind-section {
+  padding: 8px 12px 12px;
+  border-top: 1px solid rgba(201, 184, 232, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.gallery-friend-empty {
+.pet-card-bind-current {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.gallery-friend-empty-text {
-  font-size: 12px;
-  color: #c0b8c8;
-}
-
-.gallery-bind-btn {
-  padding: 5px 14px;
-  border: 2px solid #C9B8E8;
-  border-radius: 8px;
-  background: #fff;
+  font-size: 11px;
   color: #5a4e6e;
+}
+
+.pet-card-unbind-btn {
+  padding: 2px 8px;
+  border: 1px solid #FF3B30;
+  border-radius: 4px;
+  background: none;
+  color: #FF3B30;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pet-card-bind-row {
+  display: flex;
+  gap: 6px;
+}
+
+.pet-card-bind-input {
+  flex: 1;
+  height: 30px;
+  border: 1.5px solid #e0ddd6;
+  border-radius: 6px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 3px;
+  text-align: center;
+  outline: none;
+  text-transform: uppercase;
+  color: #3a3545;
+}
+
+.pet-card-bind-input:focus {
+  border-color: #C9B8E8;
+}
+
+.pet-card-bind-btn {
+  padding: 0 14px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #F4A7B9, #C9B8E8);
+  color: #fff;
   font-size: 12px;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
 }
 
-.gallery-bind-btn:hover {
-  background: linear-gradient(135deg, #F4A7B9, #C9B8E8);
-  color: #fff;
-  border-color: transparent;
+.pet-card-bind-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pet-card-bind-error {
+  font-size: 11px;
+  color: #FF3B30;
+}
+
+/* New Pet Card */
+.pet-card-new {
+  border-style: dashed;
+  background: transparent;
+}
+
+.pet-card-new:hover {
+  background: rgba(201, 184, 232, 0.06);
+}
+
+.pet-card-new-inner {
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.pet-card-new-icon {
+  font-size: 28px;
+  color: #c0b8c8;
+  line-height: 1;
+}
+
+.pet-card-new-text {
+  font-size: 13px;
+  color: #a099ab;
 }
 
 /* ============ Create Pet Flow ============ */
@@ -579,43 +784,24 @@ body {
   padding: 0 4px;
 }
 
-/* 抠图推荐按钮 */
-.cutout-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(201, 184, 232, 0.1);
-}
-
-.cutout-label {
-  font-size: 12px;
-  color: #a099ab;
-}
-
-.cutout-btn-row {
-  display: flex;
-  gap: 8px;
-}
-
-.cutout-btn {
-  flex: 1;
-  height: 32px;
+/* 抠图固定按钮 */
+.cutout-fixed-btn {
+  width: 100%;
+  padding: 10px 16px;
   border: 2px solid #C9B8E8;
-  border-radius: 8px;
-  background: #fff;
+  border-radius: 10px;
+  background: rgba(201, 184, 232, 0.08);
   color: #5a4e6e;
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
+  text-align: center;
 }
 
-.cutout-btn:hover {
-  background: linear-gradient(135deg, #F4A7B9, #C9B8E8);
-  color: #fff;
-  border-color: transparent;
+.cutout-fixed-btn:hover {
+  background: linear-gradient(135deg, rgba(244, 167, 185, 0.15), rgba(201, 184, 232, 0.15));
+  border-color: #F4A7B9;
 }
 
 .create-pet-name-row {
@@ -679,7 +865,7 @@ body {
   border-color: transparent;
 }
 
-/* ============ Setup Steps (reused) ============ */
+/* ============ Setup Steps ============ */
 .setup-steps-indicator {
   display: flex;
   align-items: center;
@@ -733,7 +919,7 @@ body {
   text-align: center;
 }
 
-/* Avatar Upload Frame（带透明背景的画框） */
+/* Avatar Upload Frame */
 .avatar-upload-frame {
   margin: 0 auto;
   border: 3px dashed #C9B8E8;
@@ -742,10 +928,9 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background 0.2s;
   overflow: hidden;
   position: relative;
-  /* 棋盘格背景表示透明 */
   background:
     repeating-conic-gradient(rgba(201,184,232,0.12) 0% 25%, transparent 0% 50%)
     50% / 16px 16px;
@@ -753,6 +938,11 @@ body {
 
 .avatar-upload-frame:hover {
   border-color: #F4A7B9;
+}
+
+.avatar-upload-frame.drag-over {
+  border-color: #F4A7B9;
+  background: rgba(244, 167, 185, 0.08);
 }
 
 .avatar-upload-frame.has-image {
@@ -775,6 +965,8 @@ body {
   gap: 8px;
   color: #a099ab;
   font-size: 12px;
+  padding: 12px;
+  text-align: center;
 }
 
 .avatar-placeholder span:first-child {
@@ -843,115 +1035,6 @@ body {
 }
 
 .back-link:hover {
-  color: #5a4e6e;
-}
-
-/* ============ Bind Friend Tab ============ */
-.bind-friend-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 4px;
-}
-
-.bind-pet-label {
-  font-size: 13px;
-  color: #5a4e6e;
-  text-align: center;
-  padding: 4px 0;
-}
-
-.unbind-btn {
-  margin-top: 8px;
-  height: 32px !important;
-  font-size: 12px !important;
-  border-color: #FF3B30 !important;
-  color: #FF3B30 !important;
-}
-
-.unbind-btn:hover {
-  background: rgba(255, 59, 48, 0.06) !important;
-}
-
-.bind-section-block {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 10px;
-}
-
-.bind-label {
-  font-size: 13px;
-  color: #5a4e6e;
-  font-weight: 500;
-}
-
-.bind-code-display {
-  font-size: 24px;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 6px;
-  text-align: center;
-  color: #5a4e6e;
-  font-weight: bold;
-  padding: 8px;
-  background: #fff;
-  border-radius: 8px;
-  border: 2px solid #C9B8E8;
-  user-select: all;
-}
-
-.bind-hint {
-  font-size: 11px;
-  color: #a099ab;
-  text-align: center;
-}
-
-.bind-input-row {
-  display: flex;
-  gap: 8px;
-}
-
-.bind-code-input {
-  flex: 1;
-  height: 36px;
-  border: 2px solid #e0ddd6;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-size: 16px;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 4px;
-  text-align: center;
-  outline: none;
-  text-transform: uppercase;
-  color: #3a3545;
-}
-
-.bind-code-input:focus {
-  border-color: #C9B8E8;
-}
-
-.bind-submit-btn {
-  height: 36px !important;
-  flex-shrink: 0;
-}
-
-.bind-error {
-  font-size: 12px;
-  color: #FF3B30;
-  text-align: center;
-}
-
-.bind-success-block {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(201, 184, 232, 0.1);
-  border-radius: 10px;
-  font-size: 14px;
   color: #5a4e6e;
 }
 
@@ -1121,6 +1204,11 @@ body {
   border-radius: 12px;
   border: 2px dashed rgba(201, 184, 232, 0.4);
   image-rendering: auto;
+  transition: transform 1.5s ease-in-out;
+}
+
+.animation-preview-canvas.faint-rotate {
+  transform: rotate(90deg);
 }
 
 .animation-state-buttons {
@@ -1184,15 +1272,6 @@ body {
 
   .bone-list {
     max-height: 160px;
-  }
-
-  .pet-gallery-grid {
-    gap: 8px;
-  }
-
-  .pet-slot {
-    width: 85px;
-    height: 100px;
   }
 }
 

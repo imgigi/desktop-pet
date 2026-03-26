@@ -41,7 +41,7 @@ export function useWindowManager() {
     if (!tauri) return
     const rect = await getLogicalRect(tauri)
 
-    const newW = 400, newH = 560
+    const newW = 400, newH = 640
     // 保持底边不动
     const newY = rect.y + rect.h - newH
     const newX = rect.x + (rect.w - newW) / 2
@@ -55,7 +55,7 @@ export function useWindowManager() {
     const tauri = await getTauriWindow()
     if (!tauri) return
     await tauri.win.setAlwaysOnTop(false)
-    await tauri.win.setSize(new tauri.LogicalSize(400, 560))
+    await tauri.win.setSize(new tauri.LogicalSize(400, 640))
     await tauri.win.center()
   }, [])
 

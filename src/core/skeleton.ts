@@ -5,8 +5,8 @@ import type { Bone } from './types'
 export const allBones: Bone[] = [
   { id: 'head',       label: '头部',   emoji: '👤', offset: { x: 0, y: -80 },  rotation: 0, length: 35, enabled: true,  influence: 60 },
   { id: 'body',       label: '身体',   emoji: '👕', offset: { x: 0, y: 0 },    rotation: 0, length: 60, enabled: true,  influence: 80 },
-  { id: 'arm_l',      label: '左臂',   emoji: '💪', offset: { x: -50, y: -20 },rotation: 0, length: 45, enabled: true,  influence: 50 },
-  { id: 'arm_r',      label: '右臂',   emoji: '🤚', offset: { x: 50, y: -20 }, rotation: 0, length: 45, enabled: true,  influence: 50 },
+  { id: 'arm_l',      label: '左手臂', emoji: '💪', offset: { x: -50, y: -20 },rotation: 0, length: 45, enabled: true,  influence: 50 },
+  { id: 'arm_r',      label: '右手臂', emoji: '🤚', offset: { x: 50, y: -20 }, rotation: 0, length: 45, enabled: true,  influence: 50 },
   { id: 'leg_l',      label: '左腿',   emoji: '🦵', offset: { x: -20, y: 60 }, rotation: 0, length: 55, enabled: true,  influence: 55 },
   { id: 'leg_r',      label: '右腿',   emoji: '🦶', offset: { x: 20, y: 60 },  rotation: 0, length: 55, enabled: true,  influence: 55 },
   { id: 'ear_l',      label: '左耳',   emoji: '👂', offset: { x: -25, y: -100},rotation: 0, length: 20, enabled: false, influence: 30 },

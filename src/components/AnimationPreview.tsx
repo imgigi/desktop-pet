@@ -10,11 +10,10 @@ interface Props {
 
 const ANIMATION_STATES: { state: AnimationState; label: string; emoji: string }[] = [
   { state: 'idle',   label: '休闲', emoji: '✦' },
-  { state: 'sleep',  label: '睡觉', emoji: '☁' },
-  { state: 'active', label: '活跃', emoji: '⚡' },
   { state: 'dance',  label: '跳舞', emoji: '♪' },
   { state: 'wave',   label: '招手', emoji: '✿' },
   { state: 'bounce', label: '弹跳', emoji: '❤' },
+  { state: 'faint',  label: '晕倒', emoji: '💫' },
 ]
 
 const CANVAS_SIZE = 200
@@ -33,7 +32,6 @@ export default function AnimationPreview({ imageCanvas, bones }: Props) {
 
   const clip = animationPresets[currentState] || animationPresets['idle']
 
-  // Set canvas dimensions once
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -41,7 +39,6 @@ export default function AnimationPreview({ imageCanvas, bones }: Props) {
     canvas.height = CANVAS_SIZE
   }, [])
 
-  // Reset animation start time when state changes
   useEffect(() => {
     startRef.current = performance.now()
   }, [currentState])
@@ -73,11 +70,14 @@ export default function AnimationPreview({ imageCanvas, bones }: Props) {
     return () => cancelAnimationFrame(animRef.current)
   }, [render])
 
+  // 晕倒状态下 canvas 旋转
+  const isFaint = currentState === 'faint'
+
   return (
     <div className="animation-preview">
       <canvas
         ref={canvasRef}
-        className="animation-preview-canvas"
+        className={`animation-preview-canvas ${isFaint ? 'faint-rotate' : ''}`}
         style={{ width: CANVAS_SIZE, height: CANVAS_SIZE }}
       />
       <div className="animation-state-buttons">
