@@ -100,18 +100,14 @@ body {
 .pet-avatar-wrap {
   position: relative;
   display: inline-block;
+  cursor: pointer;
 }
 
 .pet-canvas {
   width: 160px;
   height: 160px;
-  cursor: grab;
   image-rendering: auto;
   transition: transform 1.5s ease-in-out;
-}
-
-.pet-canvas:active {
-  cursor: grabbing;
 }
 
 .pet-canvas.faint-rotate {
@@ -128,48 +124,9 @@ body {
   opacity: 0.5;
 }
 
-/* ---- Menu Dot ---- */
-.menu-dot {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  min-width: 12px;
-  height: 12px;
-  border-radius: 6px;
-  background: rgba(160, 153, 171, 0.4);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  opacity: 0.5;
-}
-
-.pet-avatar-wrap:hover .menu-dot {
-  opacity: 1;
-  background: rgba(160, 153, 171, 0.6);
-}
-
-.menu-dot-unread {
-  background: #F4A7B9 !important;
-  opacity: 1 !important;
-  min-width: 14px;
-  height: 14px;
-  border-radius: 7px;
-  animation: dot-pulse 1.5s ease-in-out infinite;
-}
-
-.menu-dot-count {
-  font-size: 9px;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1;
-  padding: 0 3px;
-}
-
-@keyframes dot-pulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(244, 167, 185, 0.5); }
-  50% { transform: scale(1.15); box-shadow: 0 0 0 4px rgba(244, 167, 185, 0); }
+/* ---- History Bubbles ---- */
+.history-bubbles {
+  animation: bubble-in 0.2s ease-out;
 }
 
 /* ---- Chat Input ---- */

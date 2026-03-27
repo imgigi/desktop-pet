@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
-import type { Bone, AnimationState } from '../core/types'
+import type { Bone, AnimationState, ChatMessage } from '../core/types'
 import { animationPresets } from '../animations/presets'
 import { evaluateAnimation, renderDeformedImage } from '../core/animator'
 
@@ -15,16 +15,15 @@ interface Props {
   state: AnimationState
   myBubble: BubbleItem | null
   friendBubble: BubbleItem | null
-  unreadCount: number
-  onDotClick: () => void
-  onDotDoubleClick: () => void
-  opacity?: number  // 0-100，默认100
+  recentMessages: ChatMessage[]
+  userId: string
+  opacity?: number
 }
 
 export default function PetDisplay({
   imageCanvas, bones, state,
   myBubble, friendBubble,
-  unreadCount, onDotClick, onDotDoubleClick,
+  recentMessages, userId,
   opacity = 100,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -33,6 +32,7 @@ export default function PetDisplay({
 
   const [visibleMine, setVisibleMine] = useState<BubbleItem | null>(null)
   const [visibleFriend, setVisibleFriend] = useState<BubbleItem | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
 
   const [canvasSize, setCanvasSize] = useState(() => Math.min(window.innerWidth * 0.6, 160))
 
@@ -103,29 +103,20 @@ export default function PetDisplay({
     return () => cancelAnimationFrame(animRef.current)
   }, [render])
 
-  const hasUnread = unreadCount > 0
   const isFaint = state === 'faint'
 
-  // 双击检测
-  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const handleDotClick = () => {
-    if (clickTimerRef.current) {
-      // 双击
-      clearTimeout(clickTimerRef.current)
-      clickTimerRef.current = null
-      onDotDoubleClick()
-    } else {
-      // 延迟判断单击
-      clickTimerRef.current = setTimeout(() => {
-        clickTimerRef.current = null
-        onDotClick()
-      }, 250)
-    }
+  // 点击宠物切换显示/隐藏最近对话
+  const handlePetClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowHistory(prev => !prev)
   }
+
+  // 最近的2条消息
+  const recentTwo = recentMessages.slice(-2)
 
   return (
     <div className="pet-display">
-      {/* 气泡区域 */}
+      {/* 实时气泡（发送/接收时短暂显示） */}
       <div className="bubbles-area">
         {visibleFriend && (
           <div className="bubble bubble-friend" key={visibleFriend.id}>
@@ -139,8 +130,25 @@ export default function PetDisplay({
         )}
       </div>
 
+      {/* 点击宠物展示的历史对话（固定显示直到再次点击） */}
+      {showHistory && !visibleMine && !visibleFriend && recentTwo.length > 0 && (
+        <div className="bubbles-area history-bubbles">
+          {recentTwo.map(msg => {
+            const isMine = msg.from_user === userId
+            return (
+              <div
+                key={msg.id}
+                className={`bubble ${isMine ? 'bubble-mine' : 'bubble-friend'}`}
+              >
+                <div className="bubble-text">{msg.content}</div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* 宠物形象 */}
-      <div className="pet-avatar-wrap">
+      <div className="pet-avatar-wrap" onClick={handlePetClick}>
         <canvas
           ref={canvasRef}
           className={`pet-canvas ${isFaint ? 'faint-rotate' : ''}`}
@@ -150,19 +158,6 @@ export default function PetDisplay({
         {!imageCanvas && (
           <div className="pet-placeholder">
             <span>🐾</span>
-          </div>
-        )}
-
-        {/* 红点/菜单 */}
-        {imageCanvas && (
-          <div
-            className={`menu-dot ${hasUnread ? 'menu-dot-unread' : ''}`}
-            onClick={handleDotClick}
-            title={hasUnread ? '点击查看消息，双击查看全部' : '打开面板'}
-          >
-            {hasUnread && unreadCount > 0 && (
-              <span className="menu-dot-count">{unreadCount}</span>
-            )}
           </div>
         )}
       </div>
