@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import type { FriendInfo } from '../core/types'
-import { supabase, isOnline } from '../lib/supabase'
-import { getDefaultBones } from '../core/skeleton'
+import { isOnline } from '../lib/supabase'
+import { bindFriendByCode } from '../lib/friend'
 
 interface Props {
   friendCode: string
@@ -24,40 +24,15 @@ export default function BindFriend({ friendCode, userId, currentFriend, petName,
     setBinding(true)
     setError('')
 
-    try {
-      if (!isOnline) {
-        const mockFriend: FriendInfo = {
-          id: 'friend-' + code,
-          nickname: code,
-          pet_image_data: null,
-          pet_bones: getDefaultBones(),
-        }
-        onFriendBound(mockFriend)
-        setBindInput('')
-        return
-      }
-
-      const { data } = await supabase!
-        .from('users').select('*').eq('friend_code', code).single()
-
-      if (data) {
-        const fi: FriendInfo = {
-          id: data.id,
-          nickname: data.nickname || code,
-          pet_image_data: data.pet_image_data,
-          pet_bones: data.pet_bones || getDefaultBones(),
-        }
-        onFriendBound(fi)
-        await supabase!.from('friendships').upsert({ user_a: userId, user_b: data.id })
-        setBindInput('')
-      } else {
-        setError('找不到这个配对码')
-      }
-    } catch {
-      setError('绑定失败，请重试')
-    } finally {
-      setBinding(false)
+    const result = await bindFriendByCode(code, userId)
+    if (result.success && result.friend) {
+      onFriendBound(result.friend)
+      setBindInput('')
+    } else {
+      setError(result.error || '绑定失败')
     }
+
+    setBinding(false)
   }, [bindInput, userId, onFriendBound])
 
   return (
@@ -84,6 +59,9 @@ export default function BindFriend({ friendCode, userId, currentFriend, petName,
 
           <div className="bind-section-block">
             <div className="bind-label">输入朋友的配对码</div>
+            {!isOnline && (
+              <div className="bind-error">当前离线，绑定功能需要联网</div>
+            )}
             <div className="bind-input-row">
               <input
                 className="bind-code-input"
@@ -91,11 +69,12 @@ export default function BindFriend({ friendCode, userId, currentFriend, petName,
                 onChange={e => setBindInput(e.target.value.toUpperCase())}
                 placeholder="6位配对码"
                 maxLength={6}
+                disabled={!isOnline}
               />
               <button
                 className="setup-btn primary bind-submit-btn"
                 onClick={handleBind}
-                disabled={bindInput.trim().length !== 6 || binding}
+                disabled={bindInput.trim().length !== 6 || binding || !isOnline}
               >
                 {binding ? '...' : '绑定'}
               </button>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import PetDisplay, { type BubbleItem } from './components/PetDisplay'
 import ChatInput from './components/ChatInput'
 import SettingsPanel from './components/SettingsPanel'
+import Onboarding, { type OnboardingStep, getOnboardingStep, setOnboardingStep } from './components/Onboarding'
 import { supabase, isOnline, generateFriendCode } from './lib/supabase'
 import { loadAppConfig, type AppConfig } from './lib/config'
 import {
@@ -59,7 +60,11 @@ function migrateIfNeeded(raw: Record<string, unknown>): UserProfile {
 }
 
 function loadImageToCanvas(dataUrl: string): Promise<HTMLCanvasElement> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    if (!dataUrl) {
+      reject(new Error('Empty dataUrl'))
+      return
+    }
     const img = new Image()
     img.onload = () => {
       const canvas = document.createElement('canvas')
@@ -68,6 +73,7 @@ function loadImageToCanvas(dataUrl: string): Promise<HTMLCanvasElement> {
       canvas.getContext('2d')!.drawImage(img, 0, 0)
       resolve(canvas)
     }
+    img.onerror = () => reject(new Error('Failed to load image'))
     img.src = dataUrl
   })
 }
@@ -97,6 +103,14 @@ export default function App() {
 
   // 输入框显示状态
   const [showInput, setShowInput] = useState(true)
+
+  // 新手引导
+  const [onboardingStep, setOnboardingStepState] = useState<OnboardingStep>(getOnboardingStep)
+
+  const handleOnboardingChange = useCallback((step: OnboardingStep) => {
+    setOnboardingStepState(step)
+    setOnboardingStep(step)
+  }, [])
 
   // 透明度
   const [petOpacity, setPetOpacity] = useState(() => {
@@ -309,16 +323,17 @@ export default function App() {
 
   // 选择宠物
   const handleSelectPet = useCallback(async (index: number) => {
-    saveProfile(p => ({ ...p, active_pet_index: index }))
-    if (profile) {
-      const pet = profile.pets[index]
-      if (pet) {
-        const canvas = await loadImageToCanvas(pet.image_data)
-        setPetCanvas(canvas)
-        bonesRef.current = pet.bones
-      }
+    let targetPet: PetData | undefined
+    saveProfile(p => {
+      targetPet = p.pets[index]
+      return { ...p, active_pet_index: index }
+    })
+    if (targetPet) {
+      const canvas = await loadImageToCanvas(targetPet.image_data)
+      setPetCanvas(canvas)
+      bonesRef.current = targetPet.bones
     }
-  }, [profile, saveProfile])
+  }, [saveProfile])
 
   // 删除宠物
   const handleDeletePet = useCallback((index: number) => {
@@ -345,14 +360,22 @@ export default function App() {
 
   // 创建宠物
   const handlePetCreated = useCallback(async (pet: PetData) => {
-    saveProfile(p => ({
-      ...p,
-      pets: [...p.pets.slice(0, 2), pet],
-      active_pet_index: Math.min(p.pets.length, 2),
-    }))
+    saveProfile(p => {
+      if (p.pets.length >= 3) return p
+      return {
+        ...p,
+        pets: [...p.pets, pet],
+        active_pet_index: p.pets.length,
+      }
+    })
     const canvas = await loadImageToCanvas(pet.image_data)
     setPetCanvas(canvas)
     bonesRef.current = pet.bones
+
+    // 创建宠物后触发浮窗引导
+    if (onboardingStep === 'create-hint' || onboardingStep === 'welcome') {
+      handleOnboardingChange('pet-click')
+    }
 
     if (isOnline && profile) {
       supabase!.from('users').upsert({
@@ -366,17 +389,19 @@ export default function App() {
 
   // 修改宠物
   const handlePetUpdated = useCallback(async (index: number, pet: PetData) => {
+    let isActive = false
     saveProfile(p => {
+      isActive = index === p.active_pet_index
       const pets = [...p.pets]
       pets[index] = { ...pet, friend: pets[index]?.friend }
       return { ...p, pets }
     })
-    if (profile && index === profile.active_pet_index) {
+    if (isActive) {
       const canvas = await loadImageToCanvas(pet.image_data)
       setPetCanvas(canvas)
       bonesRef.current = pet.bones
     }
-  }, [profile, saveProfile])
+  }, [saveProfile])
 
   // 改名
   const handleRenamePet = useCallback((index: number, name: string) => {
@@ -408,16 +433,17 @@ export default function App() {
 
   // 切换宠物
   const handleSwitchPet = useCallback(async (index: number) => {
-    saveProfile(p => ({ ...p, active_pet_index: index }))
-    if (profile) {
-      const pet = profile.pets[index]
-      if (pet) {
-        const canvas = await loadImageToCanvas(pet.image_data)
-        setPetCanvas(canvas)
-        bonesRef.current = pet.bones
-      }
+    let targetPet: PetData | undefined
+    saveProfile(p => {
+      targetPet = p.pets[index]
+      return { ...p, active_pet_index: index }
+    })
+    if (targetPet) {
+      const canvas = await loadImageToCanvas(targetPet.image_data)
+      setPetCanvas(canvas)
+      bonesRef.current = targetPet.bones
     }
-  }, [profile, saveProfile])
+  }, [saveProfile])
 
   // 拖拽（排除交互元素）
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -431,6 +457,13 @@ export default function App() {
   if (settingsOpen) {
     return (
       <div className="app-root panel-mode">
+        <Onboarding
+          step={onboardingStep}
+          onStepChange={handleOnboardingChange}
+          hasPets={profile.pets.length > 0}
+          multiPets={profile.pets.length > 1}
+          mode="panel"
+        />
         <SettingsPanel
           profile={profile}
           onSelectPet={handleSelectPet}
@@ -453,6 +486,13 @@ export default function App() {
   // 浮窗模式：只有宠物 + 对话气泡 + 输入框
   return (
     <div className="app-root pet-mode" onMouseDown={handleMouseDown}>
+      <Onboarding
+        step={onboardingStep}
+        onStepChange={handleOnboardingChange}
+        hasPets={profile.pets.length > 0}
+        multiPets={profile.pets.length > 1}
+        mode="float"
+      />
       <PetDisplay
         imageCanvas={petCanvas}
         bones={bonesRef.current}

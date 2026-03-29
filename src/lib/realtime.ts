@@ -25,6 +25,12 @@ export function subscribeMessages(
 ) {
   if (!supabase) return
 
+  // 清理旧 channel，防止泄漏
+  if (channel) {
+    supabase.removeChannel(channel)
+    channel = null
+  }
+
   channel = supabase
     .channel(`user:${userId}`)
     .on(
@@ -62,15 +68,16 @@ export async function sendMessage(
   toUser: string,
   content: string,
   petState: string = 'idle'
-) {
-  if (!supabase) return
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase) return { success: false, error: '离线模式无法发送' }
   const { error } = await supabase.from('messages').insert({
     from_user: fromUser,
     to_user: toUser,
     content,
     pet_state: petState,
   })
-  if (error) throw error
+  if (error) return { success: false, error: error.message }
+  return { success: true }
 }
 
 export async function markReadAndDelete(messageId: string) {

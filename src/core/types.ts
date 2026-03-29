@@ -42,7 +42,8 @@ export type AnimationState = 'idle' | 'dance' | 'wave' | 'bounce' | 'faint'
 export interface PetData {
   id: string
   name: string
-  image_data: string      // dataURL
+  image_data: string      // dataURL（兼容旧数据）或空字符串（图片存 IndexedDB）
+  image_id?: string       // IndexedDB 图片 key，新数据用此字段
   bones: Bone[]
   created_at: number
   friend?: FriendInfo      // 每只宠物绑定一个好友

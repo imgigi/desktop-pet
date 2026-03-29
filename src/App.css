@@ -1211,6 +1211,130 @@ body {
   font-size: 12px;
 }
 
+/* ============ Onboarding ============ */
+.onboarding-overlay {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.onboarding-center {
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+}
+
+.onboarding-top {
+  top: 8px; left: 8px; right: 8px;
+  pointer-events: auto;
+}
+
+.onboarding-above-pet {
+  bottom: 200px; left: 8px; right: 8px;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.onboarding-below-input {
+  bottom: 40px; left: 8px; right: 8px;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.onboarding-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 300px;
+  box-shadow: 0 8px 32px rgba(90, 78, 110, 0.2), 0 0 0 1px rgba(201, 184, 232, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: onboarding-pop 0.3s ease-out;
+}
+
+@keyframes onboarding-pop {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.onboarding-emoji {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.onboarding-title {
+  font-size: 16px;
+  color: #5a4e6e;
+  font-weight: 600;
+  text-align: center;
+}
+
+.onboarding-desc {
+  font-size: 13px;
+  color: #a099ab;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.onboarding-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.onboarding-next-btn {
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #F4A7B9, #C9B8E8);
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.onboarding-next-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(201, 184, 232, 0.3);
+}
+
+.onboarding-skip-btn {
+  width: 100%;
+  padding: 6px 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: #c0b8c8;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.onboarding-skip-btn:hover {
+  color: #5a4e6e;
+}
+
+.onboarding-progress {
+  min-height: 14px;
+}
+
+.onboarding-progress-text {
+  font-size: 11px;
+  color: #c0b8c8;
+}
+
 /* ============ Responsive ============ */
 @media (max-width: 360px) {
   .settings-panel {

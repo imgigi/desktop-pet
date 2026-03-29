@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import type { PetData, FriendInfo } from '../core/types'
-import { supabase, isOnline } from '../lib/supabase'
-import { getDefaultBones } from '../core/skeleton'
+import { isOnline } from '../lib/supabase'
+import { bindFriendByCode } from '../lib/friend'
 
 interface Props {
   pets: PetData[]
   activeIndex: number
   friendCode: string
   userId: string
+  petImages?: Map<string, string>
   onSelect: (index: number) => void
   onCreateNew: () => void
   onDelete: (index: number) => void
@@ -17,23 +18,8 @@ interface Props {
   onRenamePet: (index: number, name: string) => void
 }
 
-// 新手引导提示
-const TIPS_KEY = 'desktop-pet-dismissed-tips'
-
-function getDismissedTips(): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(TIPS_KEY) || '[]'))
-  } catch { return new Set() }
-}
-
-function dismissTip(id: string) {
-  const tips = getDismissedTips()
-  tips.add(id)
-  localStorage.setItem(TIPS_KEY, JSON.stringify([...tips]))
-}
-
 export default function PetGallery({
-  pets, activeIndex, friendCode, userId,
+  pets, activeIndex, friendCode, userId, petImages = new Map(),
   onSelect, onCreateNew, onDelete,
   onBindFriend, onUnbindFriend, onEditPet, onRenamePet,
 }: Props) {
@@ -44,12 +30,6 @@ export default function PetGallery({
   const [binding, setBinding] = useState(false)
   const [bindError, setBindError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
-  const [dismissedTips, setDismissedTips] = useState(() => getDismissedTips())
-
-  const handleDismissTip = (id: string) => {
-    dismissTip(id)
-    setDismissedTips(prev => new Set([...prev, id]))
-  }
 
   const startEditName = (index: number, currentName: string) => {
     setEditingName(index)
@@ -69,70 +49,27 @@ export default function PetGallery({
     setBinding(true)
     setBindError('')
 
-    try {
-      if (!isOnline) {
-        const mockFriend: FriendInfo = {
-          id: 'friend-' + code,
-          nickname: code,
-          pet_image_data: null,
-          pet_bones: getDefaultBones(),
-        }
-        onBindFriend(petIndex, mockFriend)
-        setBindInput('')
-        setExpandedCard(null)
-        return
-      }
-
-      const { data } = await supabase!
-        .from('users').select('*').eq('friend_code', code).single()
-
-      if (data) {
-        const fi: FriendInfo = {
-          id: data.id,
-          nickname: data.nickname || code,
-          pet_image_data: data.pet_image_data,
-          pet_bones: data.pet_bones || getDefaultBones(),
-        }
-        onBindFriend(petIndex, fi)
-        await supabase!.from('friendships').upsert({ user_a: userId, user_b: data.id })
-        setBindInput('')
-        setExpandedCard(null)
-      } else {
-        setBindError('找不到这个配对码，再检查一下？')
-      }
-    } catch {
-      setBindError('绑定失败，稍后再试试')
-    } finally {
-      setBinding(false)
+    const result = await bindFriendByCode(code, userId)
+    if (result.success && result.friend) {
+      onBindFriend(petIndex, result.friend)
+      setBindInput('')
+      setExpandedCard(null)
+    } else {
+      setBindError(result.error || '绑定失败')
     }
+
+    setBinding(false)
   }
 
-  const showCreateTip = pets.length === 0 && !dismissedTips.has('create')
-  const showChatTip = pets.length > 0 && !dismissedTips.has('chat')
-  const showStateTip = pets.length > 0 && !dismissedTips.has('state')
+  const getPetImageSrc = (pet: PetData): string => {
+    if (pet.image_id) {
+      return petImages.get(pet.image_id) || pet.image_data
+    }
+    return pet.image_data
+  }
 
   return (
     <div className="pet-gallery">
-      {/* 新手引导 */}
-      {showCreateTip && (
-        <div className="onboarding-tip">
-          <span className="onboarding-text">🎉 上传一张朋友的图片，把TA养成你的桌宠吧！</span>
-          <button className="onboarding-dismiss" onClick={() => handleDismissTip('create')}>✕</button>
-        </div>
-      )}
-      {showChatTip && (
-        <div className="onboarding-tip">
-          <span className="onboarding-text">💬 在底部输入框跟宠物说话，消息会发送给绑定的好友~</span>
-          <button className="onboarding-dismiss" onClick={() => handleDismissTip('chat')}>✕</button>
-        </div>
-      )}
-      {showStateTip && !showChatTip && (
-        <div className="onboarding-tip">
-          <span className="onboarding-text">✨ 发消息时点左侧图标选动作，宠物会表演给对方看！</span>
-          <button className="onboarding-dismiss" onClick={() => handleDismissTip('state')}>✕</button>
-        </div>
-      )}
-
       {/* 我的配对码 */}
       <div className="my-code-section">
         <span className="my-code-label">我的配对码：</span>
@@ -149,7 +86,7 @@ export default function PetGallery({
             onClick={() => onSelect(i)}
           >
             <div className="pet-card-main">
-              <img src={pet.image_data} alt={pet.name} className="pet-card-avatar" />
+              <img src={getPetImageSrc(pet)} alt={pet.name} className="pet-card-avatar" />
               <div className="pet-card-info">
                 {/* 可编辑名称 */}
                 {editingName === i ? (
@@ -188,6 +125,8 @@ export default function PetGallery({
                   <button
                     className="pet-card-action-btn"
                     onClick={() => setExpandedCard(expandedCard === i ? null : i)}
+                    disabled={!isOnline}
+                    title={isOnline ? undefined : '离线模式不可用'}
                   >
                     {pet.friend ? '换绑' : '绑定'}
                   </button>
