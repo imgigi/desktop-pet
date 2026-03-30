@@ -50,7 +50,11 @@ export default function ChatInput({ onSend, onStatePreview, pets, activePetIndex
     }
   }
 
-  const activePet = pets?.[activePetIndex]
+  const handleNextPet = () => {
+    if (!pets || pets.length <= 1 || !onSwitchPet) return
+    const next = (activePetIndex + 1) % pets.length
+    onSwitchPet(next)
+  }
 
   return (
     <div className="chat-input-area">
@@ -62,26 +66,8 @@ export default function ChatInput({ onSend, onStatePreview, pets, activePetIndex
               className={`state-option ${petState === key ? 'active' : ''}`}
               onClick={() => handleStateSelect(key)}
             >
-              <span className="state-option-emoji">{emoji}</span>
-              <span className="state-option-label">{label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {showSwitcher && pets && pets.length > 1 && (
-        <div className="pet-switcher-panel">
-          {pets.map((pet, i) => (
-            <button
-              key={pet.id}
-              className={`pet-switcher-item ${i === activePetIndex ? 'active' : ''}`}
-              onClick={() => {
-                onSwitchPet?.(i)
-                setShowSwitcher(false)
-              }}
-            >
-              <img src={pet.image_data} alt={pet.name} className="pet-switcher-img" />
-              <span className="pet-switcher-name">{pet.name}</span>
+              <span>{emoji}</span>
+              <span>{label}</span>
             </button>
           ))}
         </div>
@@ -107,22 +93,12 @@ export default function ChatInput({ onSend, onStatePreview, pets, activePetIndex
         {pets && pets.length > 1 && (
           <button
             className="chat-action-btn chat-switch-btn"
-            onClick={() => { setShowSwitcher(!showSwitcher); setShowStates(false) }}
-            title="切换宠物"
+            onClick={handleNextPet}
+            title={`切换宠物 (${pets[activePetIndex]?.name})`}
           >
-            {activePet ? (
-              <img src={activePet.image_data} alt="" className="chat-switch-avatar" />
-            ) : '↔'}
+            ↔
           </button>
         )}
-        <button
-          className="chat-action-btn chat-send-btn"
-          onClick={handleSend}
-          disabled={!text.trim()}
-          title="发送"
-        >
-          ↑
-        </button>
       </div>
     </div>
   )

@@ -43,6 +43,13 @@ body {
   box-shadow: none;
 }
 
+/* 浮窗模式下确保没有任何背景色块 */
+.pet-mode .pet-display,
+.pet-mode .chat-input-area,
+.pet-mode .bubbles-area {
+  background: transparent;
+}
+
 .app-root.panel-mode {
   background: #F0EBE0;
   overflow-y: auto;
@@ -176,6 +183,7 @@ body {
   max-width: 240px;
   padding: 4px 8px 8px;
   align-self: center;
+  background: transparent;
 }
 
 .chat-input-wrap {
@@ -229,31 +237,9 @@ body {
 }
 
 .chat-switch-btn {
-  overflow: hidden;
-}
-
-.chat-switch-avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 10px;
-  object-fit: cover;
-}
-
-.chat-send-btn {
   margin-right: 1px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #C9B8E8;
-}
-
-.chat-send-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #F4A7B9, #C9B8E8);
-  color: #fff;
-}
-
-.chat-send-btn:disabled {
-  opacity: 0.25;
-  cursor: default;
+  font-size: 13px;
+  color: #a099ab;
 }
 
 .chat-input {
