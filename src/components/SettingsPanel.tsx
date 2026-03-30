@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import PetGallery from './PetGallery'
 import CreatePetFlow from './CreatePetFlow'
-import ChatHistory from './ChatHistory'
 import type { PetData, UserProfile, FriendInfo } from '../core/types'
 import type { AppConfig } from '../lib/config'
 
-type TabKey = 'pets' | 'chat' | 'settings'
+type TabKey = 'pets' | 'settings'
 
 interface Props {
   profile: UserProfile
@@ -17,7 +16,7 @@ interface Props {
   onUnbindFriend: (petIndex: number) => void
   onRenamePet: (index: number, name: string) => void
   onClose: () => void
-  initialTab?: TabKey
+  initialTab?: TabKey | 'chat'
   petOpacity: number
   onOpacityChange: (val: number) => void
   appConfig?: AppConfig
@@ -25,7 +24,6 @@ interface Props {
 
 const TABS: { key: TabKey; label: string; emoji: string }[] = [
   { key: 'pets', label: '宠物栏', emoji: '🐾' },
-  { key: 'chat', label: '对话', emoji: '💬' },
   { key: 'settings', label: '设置', emoji: '⚙️' },
 ]
 
@@ -36,17 +34,18 @@ export default function SettingsPanel({
   onClose, initialTab = 'pets',
   petOpacity, onOpacityChange, appConfig,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
+  // 兼容旧的 'chat' tab，映射到 'pets'
+  const normalizedTab: TabKey = initialTab === 'chat' ? 'pets' : initialTab as TabKey
+  const [activeTab, setActiveTab] = useState<TabKey>(normalizedTab)
   const [creatingPet, setCreatingPet] = useState(false)
   const [editingPetIndex, setEditingPetIndex] = useState<number | null>(null)
 
   useEffect(() => {
-    setActiveTab(initialTab)
+    setActiveTab(initialTab === 'chat' ? 'pets' : initialTab as TabKey)
   }, [initialTab])
 
   const hasPets = profile.pets.length > 0
 
-  // 首次无宠物时直接进入创建
   useEffect(() => {
     if (!hasPets && !creatingPet) {
       setCreatingPet(true)
@@ -76,7 +75,6 @@ export default function SettingsPanel({
     }
   }
 
-  // 正在创建/编辑宠物时显示创建流程
   if (creatingPet) {
     const editPet = editingPetIndex !== null ? profile.pets[editingPetIndex] : undefined
     return (
@@ -128,6 +126,7 @@ export default function SettingsPanel({
             activeIndex={profile.active_pet_index}
             friendCode={profile.friend_code}
             userId={profile.id}
+            chatHistory={profile.chat_history}
             onSelect={(i) => { onSelectPet(i); onClose() }}
             onCreateNew={() => { setEditingPetIndex(null); setCreatingPet(true) }}
             onDelete={onDeletePet}
@@ -138,16 +137,8 @@ export default function SettingsPanel({
           />
         )}
 
-        {activeTab === 'chat' && (
-          <ChatHistory
-            messages={profile.chat_history}
-            userId={profile.id}
-          />
-        )}
-
         {activeTab === 'settings' && (
           <div className="settings-page">
-            {/* 宠物透明度 */}
             <div className="settings-section">
               <div className="settings-section-title">宠物透明度</div>
               <div className="settings-opacity-row">
@@ -164,26 +155,6 @@ export default function SettingsPanel({
               <div className="settings-hint">调低透明度，让宠物更融入桌面</div>
             </div>
 
-            {/* 抠图工具 */}
-            <div className="settings-section">
-              <div className="settings-section-title">实用工具</div>
-              <button
-                className="cutout-fixed-btn"
-                onClick={async () => {
-                  const url = appConfig?.cutout_url || 'https://www.remove.bg/zh'
-                  try {
-                    const { open } = await import('@tauri-apps/plugin-shell')
-                    await open(url)
-                  } catch {
-                    window.open(url, '_blank')
-                  }
-                }}
-              >
-                ✂️ 在线抠图去背景
-              </button>
-            </div>
-
-            {/* 关于 */}
             <div className="settings-section">
               <div className="settings-section-title">关于</div>
               <div className="settings-hint">Desktop Pet v0.1.0</div>

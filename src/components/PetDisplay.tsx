@@ -18,6 +18,7 @@ interface Props {
   recentMessages: ChatMessage[]
   userId: string
   opacity?: number
+  onDrag?: (e: React.MouseEvent) => void
 }
 
 export default function PetDisplay({
@@ -25,6 +26,7 @@ export default function PetDisplay({
   myBubble, friendBubble,
   recentMessages, userId,
   opacity = 100,
+  onDrag,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animRef = useRef<number>(0)
@@ -111,12 +113,19 @@ export default function PetDisplay({
     setShowHistory(prev => !prev)
   }
 
+  // mousedown 时触发拖拽
+  const handlePetMouseDown = (e: React.MouseEvent) => {
+    if (onDrag) {
+      onDrag(e)
+    }
+  }
+
   // 最近的2条消息
   const recentTwo = recentMessages.slice(-2)
 
   return (
     <div className="pet-display">
-      {/* 实时气泡（发送/接收时短暂显示） */}
+      {/* 实时气泡 */}
       <div className="bubbles-area">
         {visibleFriend && (
           <div className="bubble bubble-friend" key={visibleFriend.id}>
@@ -130,7 +139,7 @@ export default function PetDisplay({
         )}
       </div>
 
-      {/* 点击宠物展示的历史对话（固定显示直到再次点击） */}
+      {/* 历史对话 */}
       {showHistory && !visibleMine && !visibleFriend && recentTwo.length > 0 && (
         <div className="bubbles-area history-bubbles">
           {recentTwo.map(msg => {
@@ -148,7 +157,11 @@ export default function PetDisplay({
       )}
 
       {/* 宠物形象 */}
-      <div className="pet-avatar-wrap" onClick={handlePetClick}>
+      <div
+        className="pet-avatar-wrap"
+        onClick={handlePetClick}
+        onMouseDown={handlePetMouseDown}
+      >
         <canvas
           ref={canvasRef}
           className={`pet-canvas ${isFaint ? 'faint-rotate' : ''}`}

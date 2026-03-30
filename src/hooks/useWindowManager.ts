@@ -39,16 +39,11 @@ export function useWindowManager() {
   const switchToPanel = useCallback(async () => {
     const tauri = await getTauriWindow()
     if (!tauri) return
-    const rect = await getLogicalRect(tauri)
 
     const newW = 400, newH = 640
-    // 保持底边不动
-    const newY = rect.y + rect.h - newH
-    const newX = rect.x + (rect.w - newW) / 2
-
     await tauri.win.setAlwaysOnTop(false)
     await tauri.win.setSize(new tauri.LogicalSize(newW, newH))
-    await tauri.win.setPosition(new tauri.LogicalPosition(Math.max(0, newX), Math.max(0, newY)))
+    await tauri.win.center()
   }, [])
 
   const initPanel = useCallback(async () => {

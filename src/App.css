@@ -27,11 +27,48 @@ body {
 .app-root.pet-mode {
   background: transparent;
   justify-content: flex-end;
+  border: none;
+  outline: none;
+}
+
+/* 浮窗模式下消除所有元素的焦点边框 */
+.pet-mode *:focus,
+.pet-mode *:focus-visible {
+  outline: none;
+}
+
+.pet-mode button:focus,
+.pet-mode input:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .app-root.panel-mode {
   background: #F0EBE0;
   overflow-y: auto;
+}
+
+/* Panel drag bar for moving the window */
+.panel-drag-bar {
+  width: 100%;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+
+.panel-drag-bar:active {
+  cursor: grabbing;
+}
+
+.panel-drag-dots {
+  font-size: 14px;
+  color: #c0b8c8;
+  letter-spacing: 2px;
+  user-select: none;
 }
 
 /* ---- Pet Display ---- */
@@ -100,7 +137,11 @@ body {
 .pet-avatar-wrap {
   position: relative;
   display: inline-block;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.pet-avatar-wrap:active {
+  cursor: grabbing;
 }
 
 .pet-canvas {
@@ -142,6 +183,8 @@ body {
   align-items: center;
   height: 28px;
   border-radius: 14px;
+  border: none;
+  outline: none;
   background: rgba(255, 255, 255, 0.5);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
@@ -150,13 +193,16 @@ body {
 
 .chat-input-wrap:focus-within {
   background: rgba(255, 255, 255, 0.7);
+  outline: none;
+  border: none;
 }
 
-.state-inline-btn {
-  width: 24px;
-  height: 24px;
+/* Chat Action Buttons (unified style) */
+.chat-action-btn {
+  width: 26px;
+  height: 26px;
   border: none;
-  border-radius: 12px;
+  border-radius: 13px;
   background: transparent;
   cursor: pointer;
   font-size: 12px;
@@ -164,12 +210,50 @@ body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-left: 2px;
-  transition: background 0.15s;
+  transition: all 0.15s;
+  padding: 0;
+  color: #a099ab;
 }
 
-.state-inline-btn:hover {
-  background: rgba(201, 184, 232, 0.2);
+.chat-action-btn:hover {
+  background: rgba(201, 184, 232, 0.18);
+  color: #5a4e6e;
+}
+
+.chat-state-btn {
+  margin-left: 1px;
+}
+
+.chat-state-btn.has-state {
+  color: #F4A7B9;
+}
+
+.chat-switch-btn {
+  overflow: hidden;
+}
+
+.chat-switch-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.chat-send-btn {
+  margin-right: 1px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #C9B8E8;
+}
+
+.chat-send-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #F4A7B9, #C9B8E8);
+  color: #fff;
+}
+
+.chat-send-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
 }
 
 .chat-input {
@@ -177,7 +261,7 @@ body {
   height: 26px;
   border: none;
   border-radius: 0;
-  padding: 0 8px 0 2px;
+  padding: 0 4px;
   font-size: 12px;
   font-family: inherit;
   outline: none;
@@ -189,27 +273,6 @@ body {
 .chat-input::placeholder {
   color: rgba(58, 53, 69, 0.3);
   font-size: 11px;
-}
-
-/* Pet Switch Button */
-.pet-switch-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 12px;
-  background: transparent;
-  cursor: pointer;
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-right: 2px;
-  transition: background 0.15s;
-}
-
-.pet-switch-btn:hover {
-  background: rgba(201, 184, 232, 0.2);
 }
 
 /* State Picker */
@@ -705,6 +768,65 @@ body {
 .pet-card-bind-error {
   font-size: 11px;
   color: #FF3B30;
+}
+
+/* Pet Card Chat Section */
+.pet-card-chat-section {
+  padding: 8px 12px 12px;
+  border-top: 1px solid rgba(201, 184, 232, 0.15);
+}
+
+.pet-card-chat-empty {
+  text-align: center;
+  font-size: 12px;
+  color: #c0b8c8;
+  padding: 12px 0;
+}
+
+.pet-card-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.pet-card-chat-item {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.pet-card-chat-item.mine {
+  border-left: 2px solid #F4A7B9;
+}
+
+.pet-card-chat-item.friend {
+  border-left: 2px solid #C9B8E8;
+}
+
+.pet-card-chat-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.pet-card-chat-sender {
+  font-size: 10px;
+  color: #5a4e6e;
+  font-weight: 500;
+}
+
+.pet-card-chat-time {
+  font-size: 9px;
+  color: #c0b8c8;
+}
+
+.pet-card-chat-content {
+  font-size: 12px;
+  color: #3a3545;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 /* New Pet Card */

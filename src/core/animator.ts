@@ -90,12 +90,12 @@ function computeDisplacement(
     const dist = Math.hypot(px - boneX, py - boneY)
     const influence = bone.influence
 
-    if (dist > influence * 3) continue
+    if (dist > influence * 2.5) continue
 
-    // Smooth cubic falloff — much smoother than quadratic, avoids hard edges
-    const t = Math.min(dist / influence, 3)
-    const normalized = t / 3 // 0..1
-    const weight = normalized < 1 ? (1 - normalized * normalized) * (1 - normalized * normalized) : 0
+    // Smooth falloff using smootherstep (quintic) — very smooth, no hard edges
+    const normalized = Math.min(dist / (influence * 2.5), 1)
+    const x = 1 - normalized
+    const weight = x * x * x * (x * (x * 6 - 15) + 10) // smootherstep(1-t)
 
     const bt = transforms.get(bone.id)
     if (!bt || weight === 0) continue
@@ -136,7 +136,7 @@ export function renderDeformedImage(
   const cx = width / 2
   const cy = height / 2
 
-  const gridSize = 10
+  const gridSize = 20
   const cols = Math.ceil(width / gridSize)
   const rows = Math.ceil(height / gridSize)
 
@@ -209,11 +209,21 @@ function drawTriangle(
 ) {
   ctx.save()
 
-  // Clip to destination triangle (with slight expansion to avoid sub-pixel gaps)
+  // Slightly expand triangle to prevent sub-pixel gaps between adjacent triangles
+  const ecx = (dx0 + dx1 + dx2) / 3
+  const ecy = (dy0 + dy1 + dy2) / 3
+  const expand = 0.6
+  const ex0 = dx0 + (dx0 - ecx) * expand / Math.hypot(dx0 - ecx, dy0 - ecy || 1)
+  const ey0 = dy0 + (dy0 - ecy) * expand / Math.hypot(dx0 - ecx, dy0 - ecy || 1)
+  const ex1 = dx1 + (dx1 - ecx) * expand / Math.hypot(dx1 - ecx, dy1 - ecy || 1)
+  const ey1 = dy1 + (dy1 - ecy) * expand / Math.hypot(dx1 - ecx, dy1 - ecy || 1)
+  const ex2 = dx2 + (dx2 - ecx) * expand / Math.hypot(dx2 - ecx, dy2 - ecy || 1)
+  const ey2 = dy2 + (dy2 - ecy) * expand / Math.hypot(dx2 - ecx, dy2 - ecy || 1)
+
   ctx.beginPath()
-  ctx.moveTo(dx0, dy0)
-  ctx.lineTo(dx1, dy1)
-  ctx.lineTo(dx2, dy2)
+  ctx.moveTo(ex0, ey0)
+  ctx.lineTo(ex1, ey1)
+  ctx.lineTo(ex2, ey2)
   ctx.closePath()
   ctx.clip()
 

@@ -45,11 +45,12 @@ export default function ChatInput({ onSend, onStatePreview, pets, activePetIndex
     setPetState(key)
     setShowStates(false)
     inputRef.current?.focus()
-    // 选择状态时预览动画3秒
     if (key !== 'idle' && onStatePreview) {
       onStatePreview(key)
     }
   }
+
+  const activePet = pets?.[activePetIndex]
 
   return (
     <div className="chat-input-area">
@@ -61,14 +62,13 @@ export default function ChatInput({ onSend, onStatePreview, pets, activePetIndex
               className={`state-option ${petState === key ? 'active' : ''}`}
               onClick={() => handleStateSelect(key)}
             >
-              <span>{emoji}</span>
-              <span>{label}</span>
+              <span className="state-option-emoji">{emoji}</span>
+              <span className="state-option-label">{label}</span>
             </button>
           ))}
         </div>
       )}
 
-      {/* 宠物切换面板 */}
       {showSwitcher && pets && pets.length > 1 && (
         <div className="pet-switcher-panel">
           {pets.map((pet, i) => (
@@ -89,9 +89,9 @@ export default function ChatInput({ onSend, onStatePreview, pets, activePetIndex
 
       <div className="chat-input-wrap">
         <button
-          className="state-inline-btn"
+          className={`chat-action-btn chat-state-btn ${petState !== 'idle' ? 'has-state' : ''}`}
           onClick={() => { setShowStates(!showStates); setShowSwitcher(false) }}
-          title="选择动作状态"
+          title={`动作: ${currentStateInfo.label}`}
         >
           {currentStateInfo.emoji}
         </button>
@@ -104,16 +104,25 @@ export default function ChatInput({ onSend, onStatePreview, pets, activePetIndex
           placeholder="说点什么..."
           maxLength={200}
         />
-        {/* 宠物切换按钮 */}
         {pets && pets.length > 1 && (
           <button
-            className="pet-switch-btn"
+            className="chat-action-btn chat-switch-btn"
             onClick={() => { setShowSwitcher(!showSwitcher); setShowStates(false) }}
             title="切换宠物"
           >
-            🔄
+            {activePet ? (
+              <img src={activePet.image_data} alt="" className="chat-switch-avatar" />
+            ) : '↔'}
           </button>
         )}
+        <button
+          className="chat-action-btn chat-send-btn"
+          onClick={handleSend}
+          disabled={!text.trim()}
+          title="发送"
+        >
+          ↑
+        </button>
       </div>
     </div>
   )

@@ -168,6 +168,8 @@ export default function App() {
 
     subscribeMessages(uid,
       (msg) => {
+        // 过滤自己发的消息（本地已保存，避免重复）
+        if (msg.from_user === uid) return
         if (msg.pet_state && msg.pet_state !== 'idle') {
           if (friendTimerRef.current) clearTimeout(friendTimerRef.current)
           setFriendSetState(msg.pet_state as AnimationState)
@@ -181,6 +183,7 @@ export default function App() {
         // 添加到历史记录（去重）
         saveProfile(p => {
           if (p.chat_history.some(m => m.id === msg.id)) return p
+          const activePetId = p.pets[p.active_pet_index]?.id
           return {
             ...p,
             chat_history: [...p.chat_history, {
@@ -190,6 +193,7 @@ export default function App() {
               content: msg.content,
               pet_state: msg.pet_state,
               timestamp: Date.now(),
+              pet_id: activePetId,
             }].slice(-200),
           }
         })
@@ -202,7 +206,10 @@ export default function App() {
     )
   }, [saveProfile])
 
-  // 监听系统托盘事件
+  // 监听系统托盘事件 — 用 ref 保持最新引用
+  const openSettingsRef = useRef(openSettings)
+  openSettingsRef.current = openSettings
+
   useEffect(() => {
     let unlisten: (() => void) | undefined
 
@@ -211,7 +218,7 @@ export default function App() {
       try {
         const { listen } = await import('@tauri-apps/api/event')
         unlisten = await listen('open-settings', () => {
-          openSettings('pets')
+          openSettingsRef.current('pets')
         })
       } catch {
         // 非 Tauri 环境忽略
@@ -219,7 +226,7 @@ export default function App() {
     }
     setupTrayListener()
     return () => { unlisten?.() }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   // 初始化
   useEffect(() => {
@@ -297,6 +304,7 @@ export default function App() {
     }
     saveProfile(p => {
       const msgId = crypto.randomUUID()
+      const activePetId = p.pets[p.active_pet_index]?.id
       return {
         ...p,
         chat_history: [...p.chat_history, {
@@ -306,6 +314,7 @@ export default function App() {
           content: text,
           pet_state: state,
           timestamp: Date.now(),
+          pet_id: activePetId,
         }].slice(-200),
       }
     })
@@ -445,9 +454,9 @@ export default function App() {
     }
   }, [saveProfile])
 
-  // 拖拽（排除交互元素）
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.chat-input-area, .state-picker, .pet-switcher-panel, .settings-panel, .pet-avatar-wrap, button, input, a')) return
+  // 按住宠物拖动窗口
+  const handlePetDrag = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
     startDragging()
   }, [startDragging])
 
@@ -457,6 +466,10 @@ export default function App() {
   if (settingsOpen) {
     return (
       <div className="app-root panel-mode">
+        {/* 可拖拽的顶部区域 */}
+        <div className="panel-drag-bar" onMouseDown={handlePetDrag}>
+          <div className="panel-drag-dots">· · ·</div>
+        </div>
         <Onboarding
           step={onboardingStep}
           onStepChange={handleOnboardingChange}
@@ -485,7 +498,7 @@ export default function App() {
 
   // 浮窗模式：只有宠物 + 对话气泡 + 输入框
   return (
-    <div className="app-root pet-mode" onMouseDown={handleMouseDown}>
+    <div className="app-root pet-mode">
       <Onboarding
         step={onboardingStep}
         onStepChange={handleOnboardingChange}
@@ -502,6 +515,7 @@ export default function App() {
         recentMessages={profile.chat_history}
         userId={profile.id}
         opacity={petOpacity}
+        onDrag={handlePetDrag}
       />
       {showInput && (
         <ChatInput

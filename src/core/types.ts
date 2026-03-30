@@ -56,6 +56,7 @@ export interface ChatMessage {
   content: string
   pet_state: string
   timestamp: number
+  pet_id?: string  // 关联的宠物 ID
 }
 
 export interface UserProfile {
