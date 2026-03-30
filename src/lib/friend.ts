@@ -14,14 +14,33 @@ export async function bindFriendByCode(code: string, userId: string): Promise<Bi
   }
 
   try {
+    // 先确保自己的记录存在于 Supabase
+    const localData = localStorage.getItem('desktop-pet-user')
+    if (localData) {
+      const me = JSON.parse(localData)
+      await supabase!.from('users').upsert(
+        {
+          id: me.id,
+          friend_code: me.friend_code,
+          nickname: me.nickname || null,
+        },
+        { onConflict: 'id' }
+      )
+    }
+
     const { data, error } = await supabase!
       .from('users')
       .select('id, nickname, friend_code, pet_image_data, pet_bones')
       .eq('friend_code', code)
-      .single()
+      .maybeSingle()
 
-    if (error || !data) {
-      return { success: false, error: '找不到这个配对码，再检查一下？' }
+    if (error) {
+      console.error('[friend] lookup error:', error.message)
+      return { success: false, error: '查询失败，请检查网络连接' }
+    }
+
+    if (!data) {
+      return { success: false, error: '找不到这个配对码，确认对方已打开过应用？' }
     }
 
     if (data.id === userId) {
@@ -36,10 +55,14 @@ export async function bindFriendByCode(code: string, userId: string): Promise<Bi
     }
 
     // 记录好友关系
-    await supabase!.from('friendships').upsert({ user_a: userId, user_b: data.id })
+    await supabase!.from('friendships').upsert(
+      { user_a: userId, user_b: data.id },
+      { onConflict: 'user_a,user_b' }
+    )
 
     return { success: true, friend }
-  } catch {
+  } catch (e) {
+    console.error('[friend] bind error:', e)
     return { success: false, error: '绑定失败，稍后再试试' }
   }
 }

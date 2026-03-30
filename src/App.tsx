@@ -250,12 +250,17 @@ export default function App() {
     loadActivePet(p)
     startListening(p.id)
 
-    // 同步到 Supabase
+    // 同步到 Supabase — 确保用户记录存在，否则配对码查不到
     if (isOnline) {
-      supabase!.from('users').upsert({
-        id: p.id,
-        friend_code: p.friend_code,
-        nickname: p.nickname || null,
+      supabase!.from('users').upsert(
+        {
+          id: p.id,
+          friend_code: p.friend_code,
+          nickname: p.nickname || null,
+        },
+        { onConflict: 'id' }
+      ).then(({ error }) => {
+        if (error) console.error('[supabase] user upsert failed:', error.message)
       })
     }
 
@@ -388,11 +393,16 @@ export default function App() {
     }
 
     if (isOnline && profile) {
-      supabase!.from('users').upsert({
-        id: profile.id,
-        friend_code: profile.friend_code,
-        pet_image_data: pet.image_data,
-        pet_bones: pet.bones,
+      supabase!.from('users').upsert(
+        {
+          id: profile.id,
+          friend_code: profile.friend_code,
+          pet_image_data: pet.image_data,
+          pet_bones: pet.bones,
+        },
+        { onConflict: 'id' }
+      ).then(({ error }) => {
+        if (error) console.error('[supabase] pet sync failed:', error.message)
       })
     }
   }, [profile, saveProfile])
