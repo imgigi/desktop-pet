@@ -21,7 +21,6 @@ export default function ChatInput({ onSend, onStatePreview, pets, activePetIndex
   const [text, setText] = useState('')
   const [petState, setPetState] = useState<AnimationState>('idle')
   const [showStates, setShowStates] = useState(false)
-  const [showSwitcher, setShowSwitcher] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const currentStateInfo = STATE_OPTIONS.find(s => s.key === petState)!
@@ -76,7 +75,7 @@ export default function ChatInput({ onSend, onStatePreview, pets, activePetIndex
       <div className="chat-input-wrap">
         <button
           className={`chat-action-btn chat-state-btn ${petState !== 'idle' ? 'has-state' : ''}`}
-          onClick={() => { setShowStates(!showStates); setShowSwitcher(false) }}
+          onClick={() => setShowStates(!showStates)}
           title={`动作: ${currentStateInfo.label}`}
         >
           {currentStateInfo.emoji}
