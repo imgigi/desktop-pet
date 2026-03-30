@@ -206,9 +206,8 @@ export default function App() {
     )
   }, [saveProfile])
 
-  // 监听系统托盘事件 — 用 ref 保持最新引用
-  const openSettingsRef = useRef(openSettings)
-  openSettingsRef.current = openSettings
+  // 监听系统托盘事件 — ref 在 openSettings 定义后赋值
+  const openSettingsRef = useRef<typeof openSettings | null>(null)
 
   useEffect(() => {
     let unlisten: (() => void) | undefined
@@ -218,7 +217,7 @@ export default function App() {
       try {
         const { listen } = await import('@tauri-apps/api/event')
         unlisten = await listen('open-settings', () => {
-          openSettingsRef.current('pets')
+          openSettingsRef.current?.('pets')
         })
       } catch {
         // 非 Tauri 环境忽略
@@ -276,6 +275,8 @@ export default function App() {
     setShowInput(false)
     await switchToPanel()
   }, [switchToPanel])
+
+  openSettingsRef.current = openSettings
 
   // 关闭设置面板
   const closeSettings = useCallback(async () => {
